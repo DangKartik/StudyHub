@@ -1,0 +1,127 @@
+import Foundation
+import SwiftData
+
+protocol CourseRepositoryProtocol {
+    func create(_ course: Course) throws
+    func fetchAll() throws -> [Course]
+    func fetch(id: UUID) throws -> Course?
+    func delete(_ course: Course) throws
+    func save() throws
+    func exists(id: UUID) throws -> Bool
+    func count() throws -> Int
+
+    func fetch(forSemester semester: Semester) throws -> [Course]
+    func search(query: String) throws -> [Course]
+
+    func createQuiz(_ quiz: Quiz, for course: Course) throws
+    func deleteQuiz(_ quiz: Quiz) throws
+    func fetchQuizzes(for course: Course) throws -> [Quiz]
+
+    func createExam(_ exam: Exam, for course: Course) throws
+    func deleteExam(_ exam: Exam) throws
+    func fetchExams(for course: Course) throws -> [Exam]
+
+    func createGradeCategory(_ category: GradeCategory, for course: Course) throws
+    func deleteGradeCategory(_ category: GradeCategory) throws
+    func fetchGradeCategories(for course: Course) throws -> [GradeCategory]
+}
+
+@MainActor
+final class CourseRepository: CourseRepositoryProtocol {
+    private let modelContext: ModelContext
+
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
+
+    func create(_ course: Course) throws {
+        modelContext.insert(course)
+        try modelContext.save()
+    }
+
+    func fetchAll() throws -> [Course] {
+        let descriptor = FetchDescriptor<Course>(sortBy: [SortDescriptor(\.name)])
+        return try modelContext.fetch(descriptor)
+    }
+
+    func fetch(id: UUID) throws -> Course? {
+        var descriptor = FetchDescriptor<Course>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
+    }
+
+    func delete(_ course: Course) throws {
+        modelContext.delete(course)
+        try modelContext.save()
+    }
+
+    func save() throws {
+        try modelContext.save()
+    }
+
+    func exists(id: UUID) throws -> Bool {
+        try fetch(id: id) != nil
+    }
+
+    func count() throws -> Int {
+        try modelContext.fetchCount(FetchDescriptor<Course>())
+    }
+
+    func fetch(forSemester semester: Semester) throws -> [Course] {
+        semester.courses.sorted { $0.name < $1.name }
+    }
+
+    func search(query: String) throws -> [Course] {
+        let descriptor = FetchDescriptor<Course>(
+            predicate: #Predicate {
+                $0.name.localizedStandardContains(query) || $0.courseCode.localizedStandardContains(query)
+            }
+        )
+        return try modelContext.fetch(descriptor)
+    }
+
+    func createQuiz(_ quiz: Quiz, for course: Course) throws {
+        quiz.course = course
+        modelContext.insert(quiz)
+        try modelContext.save()
+    }
+
+    func deleteQuiz(_ quiz: Quiz) throws {
+        modelContext.delete(quiz)
+        try modelContext.save()
+    }
+
+    func fetchQuizzes(for course: Course) throws -> [Quiz] {
+        course.quizzes.sorted { $0.date < $1.date }
+    }
+
+    func createExam(_ exam: Exam, for course: Course) throws {
+        exam.course = course
+        modelContext.insert(exam)
+        try modelContext.save()
+    }
+
+    func deleteExam(_ exam: Exam) throws {
+        modelContext.delete(exam)
+        try modelContext.save()
+    }
+
+    func fetchExams(for course: Course) throws -> [Exam] {
+        course.exams.sorted { $0.date < $1.date }
+    }
+
+    func createGradeCategory(_ category: GradeCategory, for course: Course) throws {
+        category.course = course
+        modelContext.insert(category)
+        try modelContext.save()
+    }
+
+    func deleteGradeCategory(_ category: GradeCategory) throws {
+        modelContext.delete(category)
+        try modelContext.save()
+    }
+
+    func fetchGradeCategories(for course: Course) throws -> [GradeCategory] {
+        course.gradeCategories.sorted { $0.title < $1.title }
+    }
+}
