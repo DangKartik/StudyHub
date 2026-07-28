@@ -27,27 +27,27 @@ final class LectureRepository: LectureRepositoryProtocol {
 
     func create(_ lecture: Lecture) throws {
         modelContext.insert(lecture)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [Lecture] {
         let descriptor = FetchDescriptor<Lecture>(sortBy: [SortDescriptor(\.date)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> Lecture? {
         var descriptor = FetchDescriptor<Lecture>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ lecture: Lecture) throws {
         modelContext.delete(lecture)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -55,7 +55,7 @@ final class LectureRepository: LectureRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<Lecture>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<Lecture>()) }
     }
 
     func fetch(forCourse course: Course) throws -> [Lecture] {
@@ -65,12 +65,12 @@ final class LectureRepository: LectureRepositoryProtocol {
     func createAttachment(_ attachment: Attachment, for lecture: Lecture) throws {
         attachment.lecture = lecture
         modelContext.insert(attachment)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func deleteAttachment(_ attachment: Attachment) throws {
         modelContext.delete(attachment)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func fetchAttachments(for lecture: Lecture) throws -> [Attachment] {

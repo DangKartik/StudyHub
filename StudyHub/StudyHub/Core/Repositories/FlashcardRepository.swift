@@ -26,27 +26,27 @@ final class FlashcardRepository: FlashcardRepositoryProtocol {
 
     func create(_ flashcard: Flashcard) throws {
         modelContext.insert(flashcard)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [Flashcard] {
         let descriptor = FetchDescriptor<Flashcard>(sortBy: [SortDescriptor(\.createdAt)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> Flashcard? {
         var descriptor = FetchDescriptor<Flashcard>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ flashcard: Flashcard) throws {
         modelContext.delete(flashcard)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -54,7 +54,7 @@ final class FlashcardRepository: FlashcardRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<Flashcard>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<Flashcard>()) }
     }
 
     func fetch(forCourse course: Course) throws -> [Flashcard] {
@@ -73,7 +73,7 @@ final class FlashcardRepository: FlashcardRepositoryProtocol {
         let descriptor = FetchDescriptor<Flashcard>(
             predicate: #Predicate { $0.nextReviewDate != nil && $0.nextReviewDate! < endOfDay }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func search(query: String) throws -> [Flashcard] {
@@ -84,6 +84,6 @@ final class FlashcardRepository: FlashcardRepositoryProtocol {
                 flashcard.tags.contains(where: { $0.localizedStandardContains(query) })
             }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 }

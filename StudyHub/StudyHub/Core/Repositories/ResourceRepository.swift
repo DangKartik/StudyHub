@@ -23,27 +23,27 @@ final class ResourceRepository: ResourceRepositoryProtocol {
 
     func create(_ resource: Resource) throws {
         modelContext.insert(resource)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [Resource] {
         let descriptor = FetchDescriptor<Resource>(sortBy: [SortDescriptor(\.title)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> Resource? {
         var descriptor = FetchDescriptor<Resource>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ resource: Resource) throws {
         modelContext.delete(resource)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -51,7 +51,7 @@ final class ResourceRepository: ResourceRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<Resource>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<Resource>()) }
     }
 
     func fetch(forCourse course: Course) throws -> [Resource] {

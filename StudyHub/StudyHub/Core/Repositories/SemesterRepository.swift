@@ -29,27 +29,27 @@ final class SemesterRepository: SemesterRepositoryProtocol {
 
     func create(_ semester: Semester) throws {
         modelContext.insert(semester)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [Semester] {
         let descriptor = FetchDescriptor<Semester>(sortBy: [SortDescriptor(\.startDate, order: .reverse)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> Semester? {
         var descriptor = FetchDescriptor<Semester>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ semester: Semester) throws {
         modelContext.delete(semester)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -57,12 +57,12 @@ final class SemesterRepository: SemesterRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<Semester>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<Semester>()) }
     }
 
     func archive(_ semester: Semester) throws {
         semester.isArchived = true
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchActive() throws -> Semester? {

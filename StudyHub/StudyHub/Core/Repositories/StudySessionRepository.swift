@@ -24,27 +24,27 @@ final class StudySessionRepository: StudySessionRepositoryProtocol {
 
     func create(_ session: StudySession) throws {
         modelContext.insert(session)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [StudySession] {
         let descriptor = FetchDescriptor<StudySession>(sortBy: [SortDescriptor(\.startTime, order: .reverse)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> StudySession? {
         var descriptor = FetchDescriptor<StudySession>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ session: StudySession) throws {
         modelContext.delete(session)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -52,7 +52,7 @@ final class StudySessionRepository: StudySessionRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<StudySession>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<StudySession>()) }
     }
 
     func fetch(forSemester semester: Semester) throws -> [StudySession] {

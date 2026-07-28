@@ -24,27 +24,27 @@ final class CalendarRepository: CalendarRepositoryProtocol {
 
     func create(_ reference: CalendarEventReference) throws {
         modelContext.insert(reference)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [CalendarEventReference] {
         let descriptor = FetchDescriptor<CalendarEventReference>()
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> CalendarEventReference? {
         var descriptor = FetchDescriptor<CalendarEventReference>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ reference: CalendarEventReference) throws {
         modelContext.delete(reference)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -52,7 +52,7 @@ final class CalendarRepository: CalendarRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<CalendarEventReference>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<CalendarEventReference>()) }
     }
 
     func fetch(byEventIdentifier eventIdentifier: String) throws -> CalendarEventReference? {
@@ -60,12 +60,12 @@ final class CalendarRepository: CalendarRepositoryProtocol {
             predicate: #Predicate { $0.eventIdentifier == eventIdentifier }
         )
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func updateSyncStatus(_ status: SyncStatus, for reference: CalendarEventReference) throws {
         reference.syncStatus = status
         reference.lastSynced = .now
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 }

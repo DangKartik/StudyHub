@@ -29,27 +29,27 @@ final class ReadingRepository: ReadingRepositoryProtocol {
 
     func create(_ reading: Reading) throws {
         modelContext.insert(reading)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [Reading] {
         let descriptor = FetchDescriptor<Reading>(sortBy: [SortDescriptor(\.title)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> Reading? {
         var descriptor = FetchDescriptor<Reading>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ reading: Reading) throws {
         modelContext.delete(reading)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -57,7 +57,7 @@ final class ReadingRepository: ReadingRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<Reading>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<Reading>()) }
     }
 
     func fetch(forCourse course: Course) throws -> [Reading] {
@@ -68,25 +68,25 @@ final class ReadingRepository: ReadingRepositoryProtocol {
         let descriptor = FetchDescriptor<Reading>(
             predicate: #Predicate { $0.currentPage > 0 && $0.currentPage < $0.pageCount }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func completed() throws -> [Reading] {
         let descriptor = FetchDescriptor<Reading>(
             predicate: #Predicate { $0.pageCount > 0 && $0.currentPage >= $0.pageCount }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func createAttachment(_ attachment: Attachment, for reading: Reading) throws {
         attachment.reading = reading
         modelContext.insert(attachment)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func deleteAttachment(_ attachment: Attachment) throws {
         modelContext.delete(attachment)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func fetchAttachments(for reading: Reading) throws -> [Attachment] {
