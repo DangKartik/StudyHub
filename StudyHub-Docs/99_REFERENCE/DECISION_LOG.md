@@ -818,6 +818,82 @@ Avoid short-term architectural decisions.
 
 ---
 
+# DECISION-013
+
+## Decision
+
+Defer creation of the `ChecklistItem` model during Phase 2 (Data Layer) implementation.
+
+---
+
+## Context
+
+[04_SWIFTDATA_MODELS.md](../01_ARCHITECTURE/04_SWIFTDATA_MODELS.md) and [05_DATA_RELATIONSHIPS.md](../01_ARCHITECTURE/05_DATA_RELATIONSHIPS.md) both reference "Checklist Items" as an object owned by `Assignment`, but neither document defines:
+
+```
+Model properties
+
+Relationships
+
+Lifecycle behavior (e.g. ordering, completion tracking)
+```
+
+---
+
+## Options Considered
+
+### Infer a minimal model
+
+Pros:
+
+```
+Unblocks Assignment ownership hierarchy immediately
+```
+
+Cons:
+
+```
+Invents a model not specified anywhere in documentation
+
+Risk of mismatched shape once the real spec is written
+```
+
+---
+
+### Defer until specified
+
+Pros:
+
+```
+Avoids inventing undocumented models
+
+Keeps the data layer aligned with documentation as source of truth
+```
+
+Cons:
+
+```
+Assignment checklist functionality is unavailable until a future phase
+```
+
+---
+
+## Decision Reasoning
+
+Documentation is the source of truth for StudyHub's architecture. Inventing a model shape without a formal specification risks diverging from future intent and creating rework.
+
+---
+
+## Impact
+
+```
+Assignment model implemented in Phase 2a without a checklist relationship
+
+ChecklistItem model creation deferred until 04_SWIFTDATA_MODELS.md defines its properties and relationships
+```
+
+---
+
 # Future Decisions
 
 Future decisions should be added using:
@@ -897,6 +973,11 @@ iPad Support
 DECISION-012
 
 Platform Vision
+
+
+DECISION-013
+
+Defer ChecklistItem Model
 ```
 
 ---
