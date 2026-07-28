@@ -49,12 +49,12 @@ final class HomeViewModel {
         activeSemester = semester
 
         do {
-            let courses = try courseRepository.fetch(forSemester: semester)
-            courseCount = courses.count
-            let courseIDs = Set(courses.map(\.id))
+            let activeCourses = try courseRepository.fetch(forSemester: semester).filter { !$0.isArchived }
+            courseCount = activeCourses.count
+            let courseIDs = Set(activeCourses.map(\.id))
 
             var allAssignments: [Assignment] = []
-            for course in courses {
+            for course in activeCourses {
                 allAssignments.append(contentsOf: try assignmentRepository.fetch(forCourse: course))
             }
 

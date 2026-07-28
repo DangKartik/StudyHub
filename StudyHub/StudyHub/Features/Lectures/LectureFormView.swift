@@ -1,0 +1,86 @@
+import SwiftUI
+
+struct LectureFormView: View {
+    let viewModel: LectureViewModel
+    let lecture: Lecture?
+
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var topic: String = ""
+    @State private var date: Date = .now
+    @State private var startTime: Date = .now
+    @State private var endTime: Date = .now
+    @State private var location: String = ""
+    @State private var summary: String = ""
+
+    private var isEditing: Bool {
+        lecture != nil
+    }
+
+    private var canSave: Bool {
+        !topic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Lecture") {
+                    TextField("Topic", text: $topic)
+                    DatePicker("Date", selection: $date, displayedComponents: .date)
+                    DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                    DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                    TextField("Location", text: $location)
+                }
+
+                Section("Summary") {
+                    TextField("Summary", text: $summary, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .navigationTitle(isEditing ? "Edit Lecture" : "New Lecture")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        if let lecture {
+                            viewModel.updateLecture(
+                                lecture,
+                                topic: topic,
+                                date: date,
+                                startTime: startTime,
+                                endTime: endTime,
+                                location: location,
+                                summary: summary
+                            )
+                        } else {
+                            viewModel.createLecture(
+                                topic: topic,
+                                date: date,
+                                startTime: startTime,
+                                endTime: endTime,
+                                location: location,
+                                summary: summary
+                            )
+                        }
+                        dismiss()
+                    }
+                    .disabled(!canSave)
+                }
+            }
+            .onAppear {
+                if let lecture {
+                    topic = lecture.topic
+                    date = lecture.date
+                    startTime = lecture.startTime
+                    endTime = lecture.endTime
+                    location = lecture.location
+                    summary = lecture.summary
+                }
+            }
+        }
+    }
+}

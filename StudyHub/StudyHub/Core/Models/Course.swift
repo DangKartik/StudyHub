@@ -13,6 +13,7 @@ final class Course {
     var credits: Int = 0
     var goodNotesNotebookID: String?
     var notes: String = ""
+    var isArchived: Bool = false
     var createdAt: Date = Date.now
     var updatedAt: Date = Date.now
 
@@ -55,6 +56,7 @@ final class Course {
         credits: Int = 0,
         goodNotesNotebookID: String? = nil,
         notes: String = "",
+        isArchived: Bool = false,
         createdAt: Date = Date.now,
         updatedAt: Date = Date.now
     ) {
@@ -68,6 +70,7 @@ final class Course {
         self.credits = credits
         self.goodNotesNotebookID = goodNotesNotebookID
         self.notes = notes
+        self.isArchived = isArchived
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
