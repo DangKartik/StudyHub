@@ -894,6 +894,182 @@ ChecklistItem model creation deferred until 04_SWIFTDATA_MODELS.md defines its p
 
 ---
 
+# DECISION-014
+
+## Decision
+
+App-lifetime state holders (`AppState`, `NavigationRouter`) are intentionally exempt from protocol-based dependency injection.
+
+---
+
+## Context
+
+[07_DEPENDENCY_INJECTION.md §17](../01_ARCHITECTURE/07_DEPENDENCY_INJECTION.md) states "every major dependency should expose a protocol." The Phase 3A architecture audit found that `AppState` and `NavigationRouter` are both injected as concrete types (`AppState`, `NavigationRouter`) rather than as `any AppStateProtocol` / `any NavigationRouterProtocol`, unlike every Repository in `AppContainer`, which is exposed exclusively through its protocol.
+
+---
+
+## Options Considered
+
+### Add a protocol to every dependency, including state holders
+
+Pros:
+
+```
+Uniform DI pattern across the entire codebase
+
+Matches the literal wording of 07_DEPENDENCY_INJECTION.md §17
+```
+
+Cons:
+
+```
+No practical swap-implementation need for a pure state container
+
+Adds a protocol with a single production conformer and no real mock use case
+
+Extra indirection for objects that are trivially constructible for previews/tests as-is
+```
+
+---
+
+### Exempt pure app-lifetime state containers from protocol requirements
+
+Pros:
+
+```
+Matches how AppState and NavigationRouter are actually used — once each, for the app's lifetime, with no alternate implementation ever needed
+
+Keeps protocol abstraction reserved for dependencies that genuinely benefit from it
+```
+
+Cons:
+
+```
+Introduces an explicit exception to a stated architecture rule
+
+Requires a documented boundary so the exception doesn't silently spread to Repositories/Services later
+```
+
+---
+
+## Decision Reasoning
+
+Protocol-oriented DI exists to support replaceable implementations (mocking, testing, future swaps — e.g. `CloudKitService` → `EnterpriseSyncService`). `AppState` and `NavigationRouter` are pure, single-instance state containers with no external system dependency and no plausible alternate implementation. Requiring a protocol for them adds ceremony without buying testability or flexibility.
+
+The boundary is explicit: **protocols are required for replaceable infrastructure dependencies** (Repositories, Services, external integrations) **and not required for pure state containers/managers that exist only once for the app's lifecycle.**
+
+---
+
+## Impact
+
+```
+AppState and NavigationRouter remain concrete types injected directly by AppContainer
+
+Any future app-lifetime Manager (ThemeManager, SessionManager, etc.) that is a pure state holder may follow the same exemption
+
+Any dependency wrapping an external system, swappable backend, or requiring a mock for testing must still expose a protocol
+```
+
+---
+
+# DECISION-015
+
+## Decision
+
+`AppState` is the single source of truth for the active semester after application initialization. Feature ViewModels consume `AppState.activeSemester` rather than independently calling `SemesterRepository.fetchActive()`.
+
+---
+
+## Context
+
+`SemesterRepository` stores the active semester's identifier in `UserDefaults` and resolves it to a `Semester` via `fetchActive()`. `AppContainer` already performs this resolution once at launch and pushes the result into `AppState.activeSemester` (see `AppContainer.init()`).
+
+Phase 3B's `HomeViewModel` was built to read `AppState.activeSemester` directly rather than calling `SemesterRepository.fetchActive()` again. The Phase 3B audit surfaced this as a deviation worth a recorded decision, since `SemesterRepository` was listed as an allowed dependency and its absence as an active call site could otherwise look like an oversight rather than a deliberate choice.
+
+---
+
+## The Lifecycle
+
+```
+AppContainer
+
+↓ (once, at launch)
+
+SemesterRepository.fetchActive()
+
+↓
+
+AppState.activeSemester
+
+↓ (read-only)
+
+Feature ViewModels
+```
+
+---
+
+## Options Considered
+
+### Each ViewModel calls SemesterRepository.fetchActive() independently
+
+Pros:
+
+```
+Every ViewModel is self-sufficient and always reads the freshest UserDefaults-backed value
+
+Matches the literal "Use: SemesterRepository" wording from the Phase 3B brief
+```
+
+Cons:
+
+```
+Duplicates a resolution AppContainer already performed
+
+Every screen re-implements the same nil-handling for "no active semester"
+
+Multiple ViewModels could theoretically disagree if the underlying value changed mid-session
+```
+
+---
+
+### ViewModels read AppState.activeSemester; only AppContainer calls SemesterRepository.fetchActive()
+
+Pros:
+
+```
+Single resolution point — matches Dependency Ownership rules in 07_DEPENDENCY_INJECTION.md
+
+Active semester becomes one piece of shared, observable application state, consistent with 08_STATE_MANAGEMENT.md §7-8 ("Active semester" is an explicit AppState responsibility)
+
+ViewModels stay focused on their own screen's data, not on re-deriving global state
+```
+
+Cons:
+
+```
+AppState.activeSemester only updates when something explicitly calls AppState.update(activeSemester:) — future semester-switching UI must remember to update AppState, not just SemesterRepository
+```
+
+---
+
+## Decision Reasoning
+
+`SemesterRepository` remains the only thing that persists and resolves *which* semester is active. `AppState` is the observable, in-memory projection of that value for the rest of the app to read. This keeps semester resolution centralized in one place (`AppContainer` at launch, and eventually a semester-switcher ViewModel that calls both `SemesterRepository.setActive(_:)` and `AppState.update(activeSemester:)` together) rather than scattered across every feature that happens to need "the current semester."
+
+---
+
+## Impact
+
+```
+Feature ViewModels (HomeViewModel and future ones) read AppState.activeSemester, never call SemesterRepository.fetchActive() themselves
+
+Any future UI that lets a user switch semesters must update both SemesterRepository (persistence) and AppState (observable state) together, or ViewModels reading AppState will go stale
+
+SemesterRepository.fetchActive() has exactly one caller: AppContainer.init()
+```
+
+---
+
 # Future Decisions
 
 Future decisions should be added using:
@@ -978,6 +1154,16 @@ Platform Vision
 DECISION-013
 
 Defer ChecklistItem Model
+
+
+DECISION-014
+
+State Holder Protocol Exemption
+
+
+DECISION-015
+
+AppState as Active Semester Source of Truth
 ```
 
 ---

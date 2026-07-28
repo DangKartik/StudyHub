@@ -8,7 +8,14 @@ struct StudyHubApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(appState: container.appState, navigationRouter: container.navigationRouter)
+            RootView(
+                appState: container.appState,
+                navigationRouter: container.navigationRouter,
+                semesterRepository: container.semesterRepository,
+                courseRepository: container.courseRepository,
+                assignmentRepository: container.assignmentRepository,
+                statisticsRepository: container.statisticsRepository
+            )
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             container.handle(scenePhase: phase)
