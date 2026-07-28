@@ -2,6 +2,11 @@ import SwiftUI
 
 struct AppShellDetailView: View {
     let destination: SidebarDestination?
+    let appState: AppState
+    let semesterRepository: any SemesterRepositoryProtocol
+    let courseRepository: any CourseRepositoryProtocol
+    let assignmentRepository: any AssignmentRepositoryProtocol
+    let statisticsRepository: any StatisticsRepositoryProtocol
 
     var body: some View {
         NavigationStack {
@@ -12,13 +17,22 @@ struct AppShellDetailView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let destination {
+        switch destination {
+        case .home:
+            HomeView(
+                appState: appState,
+                semesterRepository: semesterRepository,
+                courseRepository: courseRepository,
+                assignmentRepository: assignmentRepository,
+                statisticsRepository: statisticsRepository
+            )
+        case .some(let destination):
             StudyHubEmptyState(
                 icon: destination.systemImage,
                 title: destination.title,
                 message: "This section hasn't been built yet."
             )
-        } else {
+        case nil:
             StudyHubEmptyState(
                 icon: "sidebar.left",
                 title: "StudyHub",
