@@ -1,0 +1,109 @@
+# STUDYHUB DOCUMENTATION STRUCTURE
+
+```text
+STUDYHUB-DOCS/
+│
+├── README.md
+│
+├── 00_FOUNDATION/
+│   ├── 00_PROJECT_RULES.md
+│   ├── 01_PRODUCT_VISION.md
+│   ├── 02_PRODUCT_REQUIREMENTS.md
+│   ├── 03_FEATURE_SPECIFICATION.md
+│   ├── 04_USER_PERSONAS.md
+│   ├── 05_USER_FLOWS.md
+│   ├── 06_INFORMATION_ARCHITECTURE.md
+│   └── 07_DESIGN_SYSTEM.md
+│
+├── 01_ARCHITECTURE/
+│   ├── 00_TECH_STACK.md
+│   ├── 01_APP_ARCHITECTURE.md
+│   ├── 02_FOLDER_STRUCTURE.md
+│   ├── 03_NAVIGATION.md
+│   ├── 04_SWIFTDATA_MODELS.md
+│   ├── 05_DATA_RELATIONSHIPS.md
+│   ├── 06_REPOSITORY_PATTERN.md
+│   ├── 07_DEPENDENCY_INJECTION.md
+│   ├── 08_STATE_MANAGEMENT.md
+│   ├── 09_SERVICES.md
+│   ├── 10_ICLOUD_SYNC.md
+│   ├── 11_LOCAL_STORAGE.md
+│   ├── 12_ERROR_HANDLING.md
+│   ├── 13_APP_LIFECYCLE.md
+│   └── 14_SEARCH_ARCHITECTURE.md
+│
+├── 02_DESIGN/
+│   ├── 00_COLOR_SYSTEM.md
+│   ├── 01_TYPOGRAPHY.md
+│   ├── 02_SPACING_SYSTEM.md
+│   ├── 03_ICONOGRAPHY.md
+│   ├── 04_COMPONENT_LIBRARY.md
+│   ├── 05_ANIMATIONS.md
+│   ├── 06_HAPTICS.md
+│   ├── 07_ACCESSIBILITY.md
+│   ├── 08_EMPTY_STATES.md
+│   ├── 09_LOADING_STATES.md
+│   ├── 10_CHARTS_AND_DATA_VISUALIZATION.md
+│   └── 11_MOTION_AND_TRANSITIONS.md
+│
+├── 03_UI/
+|   ├── 00_ONBOARDING.md
+|   ├── 01_APP_SHELL.md
+|   ├── 02_HOME_DASHBOARD.md
+|   ├── 03_SIDEBAR_NAVIGATION.md
+|   ├── 04_SEMESTERS.md
+|   ├── 05_COURSES.md
+|   ├── 06_COURSE_DETAILS.md
+|   ├── 07_LECTURES.md
+|   ├── 08_LECTURE_DETAILS.md
+|   ├── 09_ASSIGNMENTS.md
+|   ├── 10_ASSIGNMENT_DETAILS.md
+|   ├── 11_READINGS.md
+|   ├── 12_READING_DETAILS.md
+|   ├── 13_CALENDAR.md
+|   ├── 14_FLASHCARDS.md
+|   ├── 15_ACTIVE_RECALL.md
+|   ├── 16_STUDY_MODE.md
+|   ├── 17_POMODORO.md
+|   ├── 18_STATISTICS.md
+|   ├── 19_RESOURCES.md
+|   ├── 20_QUOTES.md
+|   ├── 21_SETTINGS.md
+|   ├── 22_SEARCH.md
+|   ├── 23_WIDGETS.md
+|   └── 24_GLOBAL_COMPONENTS.md
+│
+├── 04_INTEGRATIONS/
+│   ├── 00_APPLE_CALENDAR.md
+│   ├── 01_GOOGLE_CALENDAR.md
+│   ├── 02_GOODNOTES.md
+│   ├── 03_AI_ASSISTANT.md
+│   ├── 04_SPACED_REPETITION.md
+│   ├── 05_NOTIFICATIONS.md
+│   ├── 06_WIDGETKIT.md
+│   ├── 07_EXPORT_AND_BACKUP.md
+│   ├── 08_KEYBOARD_SHORTCUTS.md
+│   └── 09_FUTURE_INTEGRATIONS.md
+│
+├── 05_ENGINEERING/
+│   ├── 00_CODING_STANDARDS.md
+│   ├── 01_TESTING_STRATEGY.md
+│   ├── 02_PERFORMANCE.md
+│   ├── 03_SECURITY_AND_PRIVACY.md
+│   ├── 04_APP_STORE_PREPARATION.md
+│   ├── 05_RELEASE_CHECKLIST.md
+│   ├── 06_PRODUCT_ROADMAP.md
+│   └── 07_VERSIONING.md
+│
+└── 99_REFERENCE/
+│   ├── APPLE_HIG_CHECKLIST.md
+│   ├── SF_SYMBOLS_GUIDE.md
+│   ├── TERMINOLOGY.md
+│   ├── GLOSSARY.md
+│   ├── CHANGELOG.md
+│   └── DECISION_LOG.md
+│
+└── README.md
+│
+└── STRUCTURE.md
+```
