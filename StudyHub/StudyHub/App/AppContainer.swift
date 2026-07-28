@@ -5,6 +5,7 @@ import SwiftUI
 final class AppContainer {
     let appState: AppState
     let modelContainer: ModelContainer
+    let navigationRouter: NavigationRouter
 
     let semesterRepository: any SemesterRepositoryProtocol
     let courseRepository: any CourseRepositoryProtocol
@@ -26,6 +27,7 @@ final class AppContainer {
 
         self.appState = appState
         self.modelContainer = ModelContainerFactory.makeContainer()
+        self.navigationRouter = NavigationRouter()
 
         let context = modelContainer.mainContext
         semesterRepository = SemesterRepository(modelContext: context)
