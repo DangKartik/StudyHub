@@ -24,27 +24,27 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
 
     func create(_ snapshot: StatisticsSnapshot) throws {
         modelContext.insert(snapshot)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [StatisticsSnapshot] {
         let descriptor = FetchDescriptor<StatisticsSnapshot>(sortBy: [SortDescriptor(\.date)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> StatisticsSnapshot? {
         var descriptor = FetchDescriptor<StatisticsSnapshot>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ snapshot: StatisticsSnapshot) throws {
         modelContext.delete(snapshot)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -52,7 +52,7 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<StatisticsSnapshot>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<StatisticsSnapshot>()) }
     }
 
     func fetch(forSemester semester: Semester) throws -> [StatisticsSnapshot] {
@@ -64,6 +64,6 @@ final class StatisticsRepository: StatisticsRepositoryProtocol {
             predicate: #Predicate { $0.date >= startDate && $0.date < endDate },
             sortBy: [SortDescriptor(\.date)]
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 }

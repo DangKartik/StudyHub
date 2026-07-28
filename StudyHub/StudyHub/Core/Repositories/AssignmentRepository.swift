@@ -31,27 +31,27 @@ final class AssignmentRepository: AssignmentRepositoryProtocol {
 
     func create(_ assignment: Assignment) throws {
         modelContext.insert(assignment)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [Assignment] {
         let descriptor = FetchDescriptor<Assignment>(sortBy: [SortDescriptor(\.dueDate)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> Assignment? {
         var descriptor = FetchDescriptor<Assignment>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ assignment: Assignment) throws {
         modelContext.delete(assignment)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -59,7 +59,7 @@ final class AssignmentRepository: AssignmentRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<Assignment>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<Assignment>()) }
     }
 
     func fetch(forCourse course: Course) throws -> [Assignment] {
@@ -74,7 +74,7 @@ final class AssignmentRepository: AssignmentRepositoryProtocol {
         let descriptor = FetchDescriptor<Assignment>(
             predicate: #Predicate { $0.dueDate >= startOfDay && $0.dueDate < endOfDay }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func dueThisWeek() throws -> [Assignment] {
@@ -85,7 +85,7 @@ final class AssignmentRepository: AssignmentRepositoryProtocol {
         let descriptor = FetchDescriptor<Assignment>(
             predicate: #Predicate { $0.dueDate >= startOfDay && $0.dueDate < endOfWeek }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func overdue() throws -> [Assignment] {
@@ -94,7 +94,7 @@ final class AssignmentRepository: AssignmentRepositoryProtocol {
         let descriptor = FetchDescriptor<Assignment>(
             predicate: #Predicate { $0.dueDate < now && $0.status != completedStatus }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func completed() throws -> [Assignment] {
@@ -102,18 +102,18 @@ final class AssignmentRepository: AssignmentRepositoryProtocol {
         let descriptor = FetchDescriptor<Assignment>(
             predicate: #Predicate { $0.status == completedStatus }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func createAttachment(_ attachment: Attachment, for assignment: Assignment) throws {
         attachment.assignment = assignment
         modelContext.insert(attachment)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func deleteAttachment(_ attachment: Attachment) throws {
         modelContext.delete(attachment)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func fetchAttachments(for assignment: Assignment) throws -> [Attachment] {

@@ -36,27 +36,27 @@ final class CourseRepository: CourseRepositoryProtocol {
 
     func create(_ course: Course) throws {
         modelContext.insert(course)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [Course] {
         let descriptor = FetchDescriptor<Course>(sortBy: [SortDescriptor(\.name)])
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> Course? {
         var descriptor = FetchDescriptor<Course>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ course: Course) throws {
         modelContext.delete(course)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -64,7 +64,7 @@ final class CourseRepository: CourseRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<Course>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<Course>()) }
     }
 
     func fetch(forSemester semester: Semester) throws -> [Course] {
@@ -77,18 +77,18 @@ final class CourseRepository: CourseRepositoryProtocol {
                 $0.name.localizedStandardContains(query) || $0.courseCode.localizedStandardContains(query)
             }
         )
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func createQuiz(_ quiz: Quiz, for course: Course) throws {
         quiz.course = course
         modelContext.insert(quiz)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func deleteQuiz(_ quiz: Quiz) throws {
         modelContext.delete(quiz)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func fetchQuizzes(for course: Course) throws -> [Quiz] {
@@ -98,12 +98,12 @@ final class CourseRepository: CourseRepositoryProtocol {
     func createExam(_ exam: Exam, for course: Course) throws {
         exam.course = course
         modelContext.insert(exam)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func deleteExam(_ exam: Exam) throws {
         modelContext.delete(exam)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func fetchExams(for course: Course) throws -> [Exam] {
@@ -113,12 +113,12 @@ final class CourseRepository: CourseRepositoryProtocol {
     func createGradeCategory(_ category: GradeCategory, for course: Course) throws {
         category.course = course
         modelContext.insert(category)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func deleteGradeCategory(_ category: GradeCategory) throws {
         modelContext.delete(category)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func fetchGradeCategories(for course: Course) throws -> [GradeCategory] {

@@ -41,7 +41,11 @@ final class AppContainer {
         quoteRepository = QuoteRepository(modelContext: context)
         calendarRepository = CalendarRepository(modelContext: context)
 
-        appLifecycleService = AppLifecycleService(appState: appState)
+        appLifecycleService = AppLifecycleService(appState: appState, modelContainer: modelContainer)
+
+        if let activeSemester = try? semesterRepository.fetchActive() {
+            appState.update(activeSemester: activeSemester)
+        }
     }
 
     func handle(scenePhase: ScenePhase) {

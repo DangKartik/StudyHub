@@ -23,27 +23,27 @@ final class ActiveRecallRepository: ActiveRecallRepositoryProtocol {
 
     func create(_ question: ActiveRecallQuestion) throws {
         modelContext.insert(question)
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func fetchAll() throws -> [ActiveRecallQuestion] {
         let descriptor = FetchDescriptor<ActiveRecallQuestion>()
-        return try modelContext.fetch(descriptor)
+        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func fetch(id: UUID) throws -> ActiveRecallQuestion? {
         var descriptor = FetchDescriptor<ActiveRecallQuestion>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+        return try persistenceFetch { try modelContext.fetch(descriptor).first }
     }
 
     func delete(_ question: ActiveRecallQuestion) throws {
         modelContext.delete(question)
-        try modelContext.save()
+        try persistenceDelete { try modelContext.save() }
     }
 
     func save() throws {
-        try modelContext.save()
+        try persistenceSave { try modelContext.save() }
     }
 
     func exists(id: UUID) throws -> Bool {
@@ -51,7 +51,7 @@ final class ActiveRecallRepository: ActiveRecallRepositoryProtocol {
     }
 
     func count() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<ActiveRecallQuestion>())
+        try persistenceFetch { try modelContext.fetchCount(FetchDescriptor<ActiveRecallQuestion>()) }
     }
 
     func fetch(forLecture lecture: Lecture) throws -> [ActiveRecallQuestion] {
