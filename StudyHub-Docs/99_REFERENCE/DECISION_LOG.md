@@ -1070,6 +1070,154 @@ SemesterRepository.fetchActive() has exactly one caller: AppContainer.init()
 
 ---
 
+# DECISION-016
+
+## Decision
+
+Course archiving uses the same persistence pattern as Semester archiving. `Course` has an `isArchived` Boolean flag. Archived courses are excluded from active semester workflows.
+
+---
+
+## Context
+
+[04_SWIFTDATA_MODELS.md](../01_ARCHITECTURE/04_SWIFTDATA_MODELS.md) documents `Course` without any archived/status field, while [05_COURSES.md §16](../03_UI/05_COURSES.md) describes course states (Active, Completed, Archived) and Phase 3D's scope explicitly requires an "Archive course" action. `Semester` already solved an equivalent problem with a documented, modeled `isArchived: Bool` property and a corresponding `SemesterRepository.archive(_:)` method.
+
+---
+
+## Options Considered
+
+### Defer Course archiving until the model is formally specified
+
+Pros:
+
+```
+Avoids inventing an undocumented field, consistent with the ChecklistItem precedent (DECISION-013)
+```
+
+Cons:
+
+```
+Phase 3D explicitly scopes "Archive course" as a required feature
+
+No alternative persistence mechanism exists for this state
+```
+
+---
+
+### Add isArchived: Bool to Course, mirroring Semester exactly
+
+Pros:
+
+```
+Directly mirrors an already-approved, working pattern (Semester.isArchived + SemesterRepository.archive(_:))
+
+Minimal model change — one Boolean property, default false, no new relationships
+
+Unblocks the explicitly-scoped Phase 3D archive requirement
+```
+
+Cons:
+
+```
+Touches a Core model, which the project treats as a change requiring explicit approval
+```
+
+---
+
+## Decision Reasoning
+
+Since `Semester` already established the exact shape this problem needs (a Boolean archived flag plus a repository method that sets it and saves), extending the same pattern to `Course` is the smallest, most consistent way to satisfy Phase 3D's requirements without inventing new architecture. This was explicitly approved rather than applied unilaterally, consistent with the project's rule that Core model changes require sign-off.
+
+---
+
+## Impact
+
+```
+Course.swift gains isArchived: Bool = false
+
+CourseRepository gains archive(_ course: Course) throws, implemented identically to SemesterRepository.archive(_:)
+
+HomeViewModel filters archived courses out of course count, assignments due today, and upcoming assignments — "active semester workflows" exclude archived courses everywhere they are read
+```
+
+---
+
+# DECISION-017
+
+## Decision
+
+Lecture completion tracking is deferred. `Lecture` remains a content entity only — it stores schedule and material information, not learning progress. Progress and mastery tracking will be introduced later as a separate model, not as fields bolted onto `Lecture`.
+
+---
+
+## Context
+
+[07_LECTURES.md §23](../03_UI/07_LECTURES.md) describes a four-state completion model (Not Started → Attended → Reviewed → Mastered) tied to attendance, notes, recall, and mastery. The `Lecture` model has no status field of any kind — unlike `Course`/`Semester`, which each solved a similar problem with a single `isArchived: Bool` (DECISION-016, DECISION-015's precedents). Phase 3E's scope is limited to viewing, creating, editing, and deleting lecture records; nothing in this phase (or any shipped feature) yet reads or produces attendance, notes-taken, recall accuracy, or mastery data.
+
+---
+
+## Options Considered
+
+### Add a minimal Bool (e.g. isCompleted) now, mirroring Course.isArchived
+
+Pros:
+
+```
+Small, consistent with the Course/Semester precedent
+
+Unblocks a simple "mark complete" affordance immediately
+```
+
+Cons:
+
+```
+Doesn't actually model what the doc describes — a single Bool can't represent Attended vs Reviewed vs Mastered
+
+Would likely need to be replaced, not extended, once real progress tracking is built
+
+No feature in this phase reads or writes it, so it would ship unused
+```
+
+---
+
+### Defer entirely; treat Lecture as a content-only entity for now
+
+Pros:
+
+```
+Avoids shipping a field that doesn't match the doc's actual model and would need rework later
+
+Progress tracking spans attendance, notes, active recall, and flashcard mastery — none of which exist yet as features — so a dedicated model (or a relationship to StudySession/ActiveRecallQuestion data) is the more honest fit than a flag on Lecture
+
+Keeps Lecture's responsibility narrow: schedule + material metadata, not learning state
+```
+
+Cons:
+
+```
+No completion UI in Phase 3E
+```
+
+---
+
+## Decision Reasoning
+
+Course and Semester archiving were both single-boolean, single-purpose states with an immediate, exercised feature behind them (excluding archived items from active workflows). Lecture completion as described in the doc is a multi-stage progression fed by data from features that don't exist yet (attendance, active recall, flashcard review). Bolting a Bool onto `Lecture` now would misrepresent that model and likely be replaced rather than built upon. This is treated as a future, separate concern rather than an extension of `Lecture`.
+
+---
+
+## Impact
+
+```
+Lecture.swift gains no new fields in Phase 3E
+
+LectureViewModel/LectureListView/LectureFormView implement view/create/edit/delete only — no completion state, no sorting/filtering by status
+
+When progress tracking is designed, it should be evaluated as its own model (or derived from StudySession/ActiveRecallQuestion data) rather than a status flag retrofitted onto Lecture
+```
+
+---
+
 # Future Decisions
 
 Future decisions should be added using:
@@ -1164,6 +1312,16 @@ State Holder Protocol Exemption
 DECISION-015
 
 AppState as Active Semester Source of Truth
+
+
+DECISION-016
+
+Course Archiving Model
+
+
+DECISION-017
+
+Lecture Completion Tracking Deferred
 ```
 
 ---

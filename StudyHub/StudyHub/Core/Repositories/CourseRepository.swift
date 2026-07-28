@@ -12,6 +12,7 @@ protocol CourseRepositoryProtocol {
 
     func fetch(forSemester semester: Semester) throws -> [Course]
     func search(query: String) throws -> [Course]
+    func archive(_ course: Course) throws
 
     func createQuiz(_ quiz: Quiz, for course: Course) throws
     func deleteQuiz(_ quiz: Quiz) throws
@@ -78,6 +79,11 @@ final class CourseRepository: CourseRepositoryProtocol {
             }
         )
         return try persistenceFetch { try modelContext.fetch(descriptor) }
+    }
+
+    func archive(_ course: Course) throws {
+        course.isArchived = true
+        try persistenceSave { try modelContext.save() }
     }
 
     func createQuiz(_ quiz: Quiz, for course: Course) throws {

@@ -3,6 +3,8 @@ import SwiftUI
 struct HomeView: View {
     let appState: AppState
     let semesterRepository: any SemesterRepositoryProtocol
+    let courseRepository: any CourseRepositoryProtocol
+    let lectureRepository: any LectureRepositoryProtocol
 
     @State private var viewModel: HomeViewModel
 
@@ -11,10 +13,13 @@ struct HomeView: View {
         semesterRepository: any SemesterRepositoryProtocol,
         courseRepository: any CourseRepositoryProtocol,
         assignmentRepository: any AssignmentRepositoryProtocol,
-        statisticsRepository: any StatisticsRepositoryProtocol
+        statisticsRepository: any StatisticsRepositoryProtocol,
+        lectureRepository: any LectureRepositoryProtocol
     ) {
         self.appState = appState
         self.semesterRepository = semesterRepository
+        self.courseRepository = courseRepository
+        self.lectureRepository = lectureRepository
         _viewModel = State(wrappedValue: HomeViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -64,6 +69,14 @@ struct HomeView: View {
                 SemesterListView(appState: appState, semesterRepository: semesterRepository)
             }
             .padding(.top, 4)
+
+            NavigationLink("View Courses") {
+                CoursesView(
+                    appState: appState,
+                    courseRepository: courseRepository,
+                    lectureRepository: lectureRepository
+                )
+            }
         }
     }
 
