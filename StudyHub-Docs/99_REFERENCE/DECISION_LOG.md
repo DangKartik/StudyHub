@@ -1753,6 +1753,249 @@ The exact shape (new fields on `Reading`, a separate related model, or something
 
 ---
 
+## Approved Requirement: Resource Viewing, Highlights & Annotations in Version 1
+
+**Status:** Approved as a Version 1 scope requirement. Not a `DECISION-0NN` entry — the exact architecture (models, storage, viewer components) is explicitly not finalized. This entry records *that* the requirement is in scope, not *how* it will be built.
+
+**Current state:** Phase 3I (Resource Management) shipped only the foundation — create, edit, delete, and store `title`/`type`/`url`/`notes`. Resources today are editable records only; nothing renders or opens their actual content.
+
+**Why this isn't enough for Version 1:** Resources are a core study feature, not just a storage database. A student needs to open learning material, mark important sections, add personal notes, and interact with content — not just catalog it. Basic viewing, highlighting, and annotations are therefore required before Version 1 can be considered released, not optional polish for later.
+
+**Approved Version 1 requirements:**
+
+1. **Resource Viewing** — resources become viewable content, not only editable records:
+
+   ```
+   PDF: open inside StudyHub using an integrated PDF viewer, with basic document viewing
+
+   Website: open inside an in-app browser/web view
+
+   Video: open the linked video content
+
+   Repository: open the repository page
+
+   Book: connect with the Reading workflow where appropriate
+   ```
+
+   Navigation behavior: tapping a resource opens/views it; editing becomes a separate, explicit action (context menu, edit button, swipe action, or similar) rather than the tap target.
+
+2. **Highlights Support** — highlighting important information inside a resource (e.g., PDF text), saving highlighted sections, and associating them with the resource. The exact implementation (PDFKit annotations, a custom storage model, or otherwise) is explicitly left undecided.
+
+3. **Annotation Support** — basic notes/comments linked to highlighted sections, for storing personal explanations or thoughts while studying. Flagged for careful design since it may later connect to Active Recall, Flashcards, a Notes system, and knowledge-graph-style features — none of which exist yet.
+
+**Explicitly deferred beyond Version 1:** AI-generated summaries, AI explanations, advanced tagging, cloud synchronization, collaborative annotations, advanced knowledge graph connections, cross-resource recommendations, and advanced file management.
+
+**Why deferred (architecture, not requirement):** Viewing/highlighting/annotation each require infrastructure that doesn't exist today — a PDF viewer component, an in-app web view, and a highlight/annotation storage shape (new model(s), relationships, and possibly a shared "annotatable content" concept). None of that is designed yet. This entry exists so the requirement itself isn't lost or silently descoped while that design work is pending — actual implementation, including any new SwiftData models, requires its own scoping pass and a full `DECISION-0NN` entry before code is written, per the project's standing Core-model-change rule.
+
+---
+
+# DECISION-024
+
+## Decision
+
+Grade Tracker V1 uses weighted grading only, computed exclusively from `GradeCategory` entries. `GradeCategory` entries with no positive weight or no positive maximum score are excluded from both the weighted sum and the total-weight denominator — not counted as zero. The current grade is always a computed value, never stored on any model. `Quiz` and `Exam` scores are not part of this calculation in V1 — there is no automatic Quiz/Exam → GradeCategory rollup.
+
+---
+
+## Context
+
+The Phase 3J planning audit found `GradeCategory` already shaped for exactly this (`weight`, `earnedScore`, `maximumScore`, all raw stored inputs, no stored percentage anywhere), but flagged several undecided questions before implementation could start: whether grading is weighted or unweighted, how "ungraded" entries should be handled, whether Quiz/Exam feed into the calculation, and whether the result should ever be persisted. `04_SWIFTDATA_MODELS.md §25` already establishes the general principle that derived values like "Current Grade" and "Weighted Grade" must not be stored — this decision applies that principle concretely to Grade Tracker's specific fields.
+
+---
+
+## Options Considered
+
+### Unweighted simple average across all categories
+
+Pros:
+
+```
+Simpler arithmetic
+```
+
+Cons:
+
+```
+Ignores GradeCategory.weight entirely, a field that already exists and is already documented (06_COURSE_DETAILS.md's "Assignments 20% / Midterm 30% / Final 50%" example)
+Doesn't match how grades actually work in the real courses this app is modeling
+```
+
+---
+
+### Weighted average, treating every category (including newly-created, not-yet-scored ones) as contributing a zero
+
+Pros:
+
+```
+Simple — no filtering logic needed
+```
+
+Cons:
+
+```
+A brand-new category (created with default earnedScore = 0, maximumScore = 100) would immediately drag the current grade down to 0%, before the user has entered any real score — actively misleading
+```
+
+---
+
+### Weighted average over graded categories only, computed on demand, Quiz/Exam excluded from the calculation
+
+Pros:
+
+```
+Matches GradeCategory's existing fields with no model change beyond timestamps
+A category isn't penalized for existing before it has a real score
+Keeps Quiz/Exam as independently tracked, displayed records in V1 — avoids deciding the undecided Quiz/Exam → GradeCategory linkage question (explicitly out of scope per this phase's approval)
+Matches 04_SWIFTDATA_MODELS.md §25's "derived data is computed, not stored" rule directly
+```
+
+Cons:
+
+```
+"Ungraded" has no explicit stored flag on GradeCategory (see Impact below for the concrete rule used)
+```
+
+---
+
+## Decision Reasoning
+
+`GradeCategory` already models weighted buckets, not a flat list — using its `weight` field is the only interpretation consistent with the model's own shape and with `06_COURSE_DETAILS.md`'s documented example. Excluding zero/misconfigured-weight or zero-maximum-score categories from the denominator (rather than counting them as zero) prevents a newly-added, not-yet-scored category from artificially cratering the displayed grade — a simple average-of-zero-scores approach would actively mislead students, which conflicts with the product's own stated goal of being a trustworthy academic tool. Leaving Quiz/Exam out of the calculation entirely keeps V1 scoped to what's approved, and avoids deciding the harder, explicitly-deferred question of how (or whether) individual assessments should roll up into a category automatically.
+
+---
+
+## Impact
+
+```
+GradesViewModel.currentGrade is a computed property, never a stored field on any model
+
+Concrete "ungraded/excluded" rule: a GradeCategory is excluded from the calculation when weight <= 0 or maximumScore <= 0 — these are the only two fields available to make this determination without adding a new model field, which is out of scope for this decision
+
+Formula: currentGrade = (Σ weight × (earnedScore / maximumScore)) / (Σ weight), over included categories only; nil when no categories qualify
+
+Quiz.score and Exam scores (Exam has no score field at all) are not read by this calculation — both remain independently displayed, CRUD-only records in V1
+
+Any future automatic Quiz/Exam → GradeCategory linkage, GPA rollup, letter-grade mapping, or prediction/trend feature requires its own future DECISION-0NN — none of that is authorized by this entry
+```
+
+---
+
+# DECISION-025
+
+## Decision
+
+Add `createdAt: Date` and `updatedAt: Date` to `GradeCategory`, `Quiz`, and `Exam`, matching the convention already followed by every other primary SwiftData model in the app.
+
+---
+
+## Context
+
+The Phase 3J planning audit found that `GradeCategory`, `Quiz`, and `Exam` are the only models in `Core/Models` missing **both** `createdAt` and `updatedAt` — a larger gap than `Resource`'s pre-Phase-3I state (which was missing only `updatedAt`, closed by DECISION-023). This violates `04_SWIFTDATA_MODELS.md §22`'s "every model should include id, createdAt, updatedAt" rule. Phase 3J is the first phase to make any of these three models user-editable, which is the same trigger condition DECISION-023 used for `Resource`.
+
+---
+
+## Options Considered
+
+### Leave GradeCategory/Quiz/Exam without timestamps
+
+Pros:
+
+```
+Zero model change
+```
+
+Cons:
+
+```
+These become the only editable models in the app with no way to tell when they were created or last modified
+Breaks the documented, otherwise-universal id/createdAt/updatedAt convention
+```
+
+---
+
+### Add createdAt and updatedAt to all three, defaulted like every other model
+
+Pros:
+
+```
+Matches the exact shape used by every other model (Course, Semester, Lecture, Assignment, Reading, Resource)
+Minimal, additive, defaulted properties — no migration risk
+Lets GradesViewModel's update methods bump updatedAt on edit, same as Resource does today
+```
+
+Cons:
+
+```
+Touches three Core models at once, which per project convention requires this decision entry
+```
+
+---
+
+## Decision Reasoning
+
+This is the same reasoning already applied twice (DECISION-016 `isArchived`, DECISION-023 `Resource.updatedAt`): a small, defaulted, non-breaking field closing a gap against an already-documented, already-universal convention, applied at the moment the model actually becomes editable. Doing all three models together (rather than one at a time across future phases) is appropriate here since Grade Tracker V1 makes all three editable simultaneously.
+
+---
+
+## Impact
+
+```
+GradeCategory.swift, Quiz.swift, and Exam.swift each gain createdAt: Date = Date.now and updatedAt: Date = Date.now, as both stored properties and defaulted init parameters
+
+GradesViewModel's update methods (updateGradeCategory, updateQuiz, updateExam) set updatedAt = Date.now before calling courseRepository.save() — the repository's save() has no way to know which fields changed, same pattern as ResourceViewModel.updateResource
+
+04_SWIFTDATA_MODELS.md's Quiz/Exam/Grade Category Model sections should be updated to list both fields (tracked as a documentation follow-up, consistent with how DECISION-023 updated Resource's doc section)
+
+No other fields are added — no isGraded flag, no letter-grade field, no GPA field
+```
+
+---
+
+## Approved Requirement: Grade Tracker Assessment Hierarchy for Version 1
+
+**Status:** Approved as a Version 1 requirement. Not a `DECISION-0NN` entry — the assessment model structure is explicitly not finalized. This entry records *that* the requirement is in scope, not *how* it will be built. The Phase 3J foundation remains unchanged; nothing here is implemented now.
+
+**Current Phase 3J implementation:** Grade Tracker V1's foundation uses manual `GradeCategory` totals only — `GradeCategory` stores `weight`, `earnedScore`, and `maximumScore` as directly-entered numbers. `Quiz` and `Exam` exist as independent, Course-owned entities with no relationship to `GradeCategory`. `GradesViewModel.currentGrade` reads only `GradeCategory` values (per DECISION-024); Quiz and Exam scores are tracked and displayed but don't feed the calculation.
+
+**Approved Version 1 requirement:** The final Grade Tracker V1 should support a proper assessment hierarchy where individual assessments belong to Grade Categories, with each assessment contributing automatically to its parent category's total — rather than a category's score being a single manually-entered number.
+
+Target structure:
+
+```
+Course
+ └── Grade Categories
+        ├── Assignments
+        ├── Quizzes
+        ├── Midterms
+        ├── Finals
+        ├── Projects
+        └── Other Assessments
+```
+
+Example:
+
+```
+Quiz Category (10%)
+    Quiz 1: 10/10
+    Quiz 2: 0/13.25
+    Quiz 3: 15/20
+```
+
+The app should automatically calculate: assessment percentage, category percentage (derived from its assessments), weighted contribution, and overall current grade.
+
+**Future Grade Tracker V1 should also support common university assessment types:** Quiz, Midterm, Final, Assignment, Project, Presentation, Other.
+
+**Explicitly deferred to future design (not decided here):**
+
+1. Assessment model structure.
+2. How Quiz/Midterm/Final/Assignment/Project/Presentation/Other relate to `GradeCategory`.
+3. Missing-grade handling — ignored vs. counted as zero.
+4. Weighted calculation rules once categories are assessment-derived rather than manually entered.
+5. A possible "what score do I need" calculator.
+
+**Why deferred:** This changes the shape of the assessment/category relationship itself — today `Quiz`/`Exam` have no link to `GradeCategory` at all (DECISION-024 deliberately left this unlinked for V1's foundation). Introducing that link, plus a general "assessment type" concept covering Assignment/Project/Presentation/Other (types with no dedicated model today), is a Core model change and must go through its own scoping pass and a full `DECISION-0NN` entry before any code is written — consistent with every other Core model change in this project. The Phase 3J foundation (manual `GradeCategory` totals, unlinked `Quiz`/`Exam`) remains the shipped V1 behavior until that future decision is made.
+
+---
+
 # Decision Index
 
 ```
@@ -1869,6 +2112,16 @@ Resource Management Course-Nested Navigation Scope
 DECISION-023
 
 Resource.updatedAt Field Added
+
+
+DECISION-024
+
+Grade Tracker V1 Weighted Grading Methodology
+
+
+DECISION-025
+
+GradeCategory/Quiz/Exam Timestamps Added
 ```
 
 ---

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CoursesView: View {
+    let courseRepository: any CourseRepositoryProtocol
     let lectureRepository: any LectureRepositoryProtocol
     let assignmentRepository: any AssignmentRepositoryProtocol
     let readingRepository: any ReadingRepositoryProtocol
@@ -12,6 +13,7 @@ struct CoursesView: View {
     @State private var courseForAssignments: Course?
     @State private var courseForReadings: Course?
     @State private var courseForResources: Course?
+    @State private var courseForGrades: Course?
     @Environment(\.openURL) private var openURL
 
     init(
@@ -23,6 +25,7 @@ struct CoursesView: View {
         readingRepository: any ReadingRepositoryProtocol,
         resourceRepository: any ResourceRepositoryProtocol
     ) {
+        self.courseRepository = courseRepository
         self.lectureRepository = lectureRepository
         self.assignmentRepository = assignmentRepository
         self.readingRepository = readingRepository
@@ -104,6 +107,16 @@ struct CoursesView: View {
                 ResourceListView(course: courseForResources, resourceRepository: resourceRepository)
             }
         }
+        .navigationDestination(isPresented: Binding(
+            get: { courseForGrades != nil },
+            set: { isPresented in
+                if !isPresented { courseForGrades = nil }
+            }
+        )) {
+            if let courseForGrades {
+                GradesListView(course: courseForGrades, courseRepository: courseRepository)
+            }
+        }
         .onAppear {
             viewModel.loadCourses()
         }
@@ -143,7 +156,8 @@ struct CoursesView: View {
                             onViewLectures: { courseForLectures = course },
                             onViewAssignments: { courseForAssignments = course },
                             onViewReadings: { courseForReadings = course },
-                            onViewResources: { courseForResources = course }
+                            onViewResources: { courseForResources = course },
+                            onViewGrades: { courseForGrades = course }
                         )
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
@@ -173,7 +187,8 @@ struct CoursesView: View {
             onViewLectures: { courseForLectures = course },
             onViewAssignments: { courseForAssignments = course },
             onViewReadings: { courseForReadings = course },
-            onViewResources: { courseForResources = course }
+            onViewResources: { courseForResources = course },
+            onViewGrades: { courseForGrades = course }
         )
         .onTapGesture {
             activeSheet = .edit(course)
@@ -215,6 +230,7 @@ private struct CourseRowView: View {
     var onViewAssignments: (() -> Void)? = nil
     var onViewReadings: (() -> Void)? = nil
     var onViewResources: (() -> Void)? = nil
+    var onViewGrades: (() -> Void)? = nil
 
     @Environment(\.openURL) private var openURL
 
@@ -296,6 +312,15 @@ private struct CourseRowView: View {
                 .buttonStyle(.bordered)
                 .font(.caption)
                 .accessibilityLabel("View resources for \(course.name).")
+            }
+
+            if let onViewGrades {
+                Button(action: onViewGrades) {
+                    Label("Grades", systemImage: "chart.bar")
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                .accessibilityLabel("View grades for \(course.name).")
             }
         }
     }

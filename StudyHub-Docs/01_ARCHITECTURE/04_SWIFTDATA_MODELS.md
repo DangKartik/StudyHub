@@ -400,7 +400,13 @@ score
 maximumScore
 
 notes
+
+createdAt
+
+updatedAt
 ```
+
+`createdAt`/`updatedAt` were added per DECISION-025, bringing Quiz in line with the project-wide id/createdAt/updatedAt convention (§22) at the point Quiz became user-editable (Grade Tracker V1, Phase 3J).
 
 Relationship
 
@@ -428,7 +434,13 @@ weight
 duration
 
 notes
+
+createdAt
+
+updatedAt
 ```
+
+`createdAt`/`updatedAt` were added per DECISION-025, bringing Exam in line with the project-wide id/createdAt/updatedAt convention (§22) at the point Exam became user-editable (Grade Tracker V1, Phase 3J).
 
 Relationship
 
@@ -470,7 +482,13 @@ weight
 earnedScore
 
 maximumScore
+
+createdAt
+
+updatedAt
 ```
+
+`createdAt`/`updatedAt` were added per DECISION-025, bringing Grade Category in line with the project-wide id/createdAt/updatedAt convention (§22) at the point Grade Category became user-editable (Grade Tracker V1, Phase 3J).
 
 Relationship
 
