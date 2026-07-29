@@ -9,6 +9,7 @@ final class Resource {
     var url: String = ""
     var notes: String = ""
     var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     var course: Course?
 
@@ -18,7 +19,8 @@ final class Resource {
         type: ResourceType,
         url: String = "",
         notes: String = "",
-        createdAt: Date = Date.now
+        createdAt: Date = Date.now,
+        updatedAt: Date = Date.now
     ) {
         self.id = id
         self.title = title
@@ -26,5 +28,6 @@ final class Resource {
         self.url = url
         self.notes = notes
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }

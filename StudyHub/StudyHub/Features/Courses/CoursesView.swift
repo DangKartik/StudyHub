@@ -4,12 +4,14 @@ struct CoursesView: View {
     let lectureRepository: any LectureRepositoryProtocol
     let assignmentRepository: any AssignmentRepositoryProtocol
     let readingRepository: any ReadingRepositoryProtocol
+    let resourceRepository: any ResourceRepositoryProtocol
 
     @State private var viewModel: CoursesViewModel
     @State private var activeSheet: CourseSheet?
     @State private var courseForLectures: Course?
     @State private var courseForAssignments: Course?
     @State private var courseForReadings: Course?
+    @State private var courseForResources: Course?
     @Environment(\.openURL) private var openURL
 
     init(
@@ -18,11 +20,13 @@ struct CoursesView: View {
         semesterRepository: any SemesterRepositoryProtocol,
         lectureRepository: any LectureRepositoryProtocol,
         assignmentRepository: any AssignmentRepositoryProtocol,
-        readingRepository: any ReadingRepositoryProtocol
+        readingRepository: any ReadingRepositoryProtocol,
+        resourceRepository: any ResourceRepositoryProtocol
     ) {
         self.lectureRepository = lectureRepository
         self.assignmentRepository = assignmentRepository
         self.readingRepository = readingRepository
+        self.resourceRepository = resourceRepository
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -90,6 +94,16 @@ struct CoursesView: View {
                 ReadingListView(course: courseForReadings, readingRepository: readingRepository)
             }
         }
+        .navigationDestination(isPresented: Binding(
+            get: { courseForResources != nil },
+            set: { isPresented in
+                if !isPresented { courseForResources = nil }
+            }
+        )) {
+            if let courseForResources {
+                ResourceListView(course: courseForResources, resourceRepository: resourceRepository)
+            }
+        }
         .onAppear {
             viewModel.loadCourses()
         }
@@ -128,7 +142,8 @@ struct CoursesView: View {
                             isArchived: true,
                             onViewLectures: { courseForLectures = course },
                             onViewAssignments: { courseForAssignments = course },
-                            onViewReadings: { courseForReadings = course }
+                            onViewReadings: { courseForReadings = course },
+                            onViewResources: { courseForResources = course }
                         )
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
@@ -157,7 +172,8 @@ struct CoursesView: View {
             course: course,
             onViewLectures: { courseForLectures = course },
             onViewAssignments: { courseForAssignments = course },
-            onViewReadings: { courseForReadings = course }
+            onViewReadings: { courseForReadings = course },
+            onViewResources: { courseForResources = course }
         )
         .onTapGesture {
             activeSheet = .edit(course)
@@ -198,6 +214,7 @@ private struct CourseRowView: View {
     var onViewLectures: (() -> Void)? = nil
     var onViewAssignments: (() -> Void)? = nil
     var onViewReadings: (() -> Void)? = nil
+    var onViewResources: (() -> Void)? = nil
 
     @Environment(\.openURL) private var openURL
 
@@ -270,6 +287,15 @@ private struct CourseRowView: View {
                 .buttonStyle(.bordered)
                 .font(.caption)
                 .accessibilityLabel("View readings for \(course.name).")
+            }
+
+            if let onViewResources {
+                Button(action: onViewResources) {
+                    Label("Resources", systemImage: "folder")
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                .accessibilityLabel("View resources for \(course.name).")
             }
         }
     }
