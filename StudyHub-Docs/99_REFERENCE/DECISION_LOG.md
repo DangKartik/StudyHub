@@ -2161,6 +2161,108 @@ Review Mode, answer-reveal flow, self-evaluation, spaced repetition, SM-2 schedu
 
 ---
 
+# DECISION-028
+
+## Decision
+
+Phase 3M (Notes Management) introduces `Note` as a new first-class Core Model: `id`, `title`, `body` (plain `String`), `createdAt`, `updatedAt`, an optional `course: Course?` relationship, and an optional `lecture: Lecture?` relationship — no `reading`/`assignment`/`resource` relationship. Attachments are **required in V1**, implemented by reusing the existing `Attachment` model (already a Primary Model, already used by `Lecture`/`Assignment`/`Reading`) rather than inventing a new model or embedding file fields directly on `Note`. `Note` gains a `NoteRepositoryProtocol` with its own CRUD plus attachment sub-methods (`createAttachment`/`deleteAttachment`/`fetchAttachments(for:)`), mirroring the existing sub-entity pattern. GoodNotes material is represented as an `Attachment` (`type == "goodnotes"`, `url` holding the deep link) — V1 stores external references only, never imported file bytes. The editor stays plain-text (`TextEditor`); rich text, Markdown, AI features, cloud sync, collaboration, knowledge graph, note linking, advanced search, tags, pinning, and favorites are all deferred. Navigation is nested only: `Course → Notes` and `Lecture → Notes`; no global "All Notes" library in V1. The six existing `notes: String` fields (`Course`, `Lecture`, `Reading`, `Resource`, `Quiz`, `Exam`) are explicitly kept unchanged as lightweight metadata fields, distinct from the new `Note` entity.
+
+---
+
+## Context
+
+The Phase 3M planning audit found no `Note` model, repository, or UI anywhere in the codebase — only six unrelated models each carrying a plain `notes: String` field. `03_FEATURE_SPECIFICATION.md §9` describes Notes as a richer, standalone concept ("can exist under: Course, Lecture, Reading, Assignment, General"; Rich Text, Images, PDF Links, Apple Pencil Attachments, Markdown Export, Search, Tags, Pinning, Favorites), and `04_SWIFTDATA_MODELS.md`'s Core Model Hierarchy diagram draws `Notes` as a child of `Lectures`, but the Primary Models table never lists it and no repository section exists for it — a real documentation gap.
+
+This update revises that initial scope: attachments are now a required part of V1, not deferred. Re-auditing the codebase for attachment precedent found `Core/Models/Attachment.swift` already exists as a built, unused-by-any-UI Core Model (`id`, `filename`, `type`, `url`, `size`, `createdAt`) with optional `lecture`/`assignment`/`reading` relationships. Its CRUD already lives directly on the owning entity's repository — `LectureRepositoryProtocol`, `AssignmentRepositoryProtocol`, and `ReadingRepositoryProtocol` each expose `createAttachment`/`deleteAttachment`/`fetchAttachments(for:)` — with no dedicated `AttachmentRepository` and no UI consumer yet. `09_SERVICES.md` and `11_LOCAL_STORAGE.md` contain no file-storage or GoodNotes-service design at all; the only precedent for referencing external material is `Course.goodNotesNotebookID: String?`, a bare deep-link string.
+
+---
+
+## Options Considered
+
+### Make Attachment support part of Note directly (embed file fields on the model)
+
+Pros:
+
+```
+No relationship to design; simplest schema
+```
+
+Cons:
+
+```
+Contradicts the model that already exists and is reused by three other entities — would create a second, parallel way of representing "a file attached to something"
+A Note could only ever have exactly the fields embedded (e.g. one URL), not a list of several attachments, which the stated use cases (slides + PDF book + reference doc + GoodNotes link, all on one note) require
+```
+
+---
+
+### Invent a new, Note-specific attachment model
+
+Pros:
+
+```
+Full control over Note-specific fields
+```
+
+Cons:
+
+```
+Duplicates Attachment's exact shape (filename/type/url/size/createdAt) for no new capability
+Directly contradicts the instruction to decide on reuse before building anything new, and there is no gap in the existing Attachment model that would justify a second one
+```
+
+---
+
+### Reuse the existing Attachment model, add a `note: Note?` relationship, and add attachment sub-methods to NoteRepositoryProtocol
+
+Pros:
+
+```
+Matches the established sub-entity pattern exactly (Lecture/Assignment/Reading already do this)
+Attachment already supports multiple files per parent (an array relationship), satisfying "slides + PDF + reference doc + GoodNotes link" on one note
+GoodNotes references fit naturally as an Attachment with type == "goodnotes" and url holding the deep link — no special-cased field needed on Note
+Zero new file-storage subsystem required: url remains a plain string reference, exactly as it already behaves for every other Attachment consumer, so this satisfies "do not implement arbitrary file storage" by construction
+Leaves room for future deeper GoodNotes integration (e.g. a future GoodNotesService resolving/opening that url) without further model changes
+```
+
+Cons:
+
+```
+Attachment.swift needs one new optional relationship (note: Note?) plus a cascade-delete inverse on Note — a small, well-precedented Core change
+```
+
+---
+
+## Decision Reasoning
+
+Reusing `Attachment` is the only option consistent with "decide whether the existing/future Attachment architecture should be reused" and "do not implement arbitrary file storage without deciding the model structure" — the model, its string-reference convention, and its sub-entity repository pattern already exist and are already proven by three other features. Building a second attachment concept would fork that convention for no benefit. Representing GoodNotes material as a typed `Attachment` rather than a dedicated `Note.goodNotesReference` field keeps a student's attached material in one browsable list and avoids a one-off field whose meaning would need to be explained separately from every other attachment. Storing only external references (never imported file bytes) is the only thing the current architecture actually supports — no file-import or CloudKit-asset service exists in `09_SERVICES.md`/`11_LOCAL_STORAGE.md`, so anything beyond a string reference would require inventing a new subsystem outside this phase's scope. Restricting V1 relationships to `Course`/`Lecture` (no `Reading`/`Assignment`/`Resource`) follows the same CRUD-foundation-first, don't-build-ahead-of-a-real-decision pattern used in every prior phase this project.
+
+---
+
+## Impact
+
+```
+Core/Models/Note.swift (new): id, title, body, createdAt, updatedAt, course: Course?, lecture: Lecture?, attachments: [Attachment] (cascade delete, inverse of Attachment.note)
+
+Core/Models/Attachment.swift: gains one new optional relationship, note: Note?, alongside its existing lecture/assignment/reading relationships. No other field changes — filename/type/url/size/createdAt stay as-is.
+
+Core/Models/Course.swift and Core/Models/Lecture.swift: each gains an inverse notes: [Note] relationship (cascade delete), matching every other nested-feature pattern
+
+Core/Repositories/NoteRepository.swift (new): NoteRepositoryProtocol with create/update(save)/delete/fetch(forCourse:)/fetch(forLecture:), plus createAttachment/deleteAttachment/fetchAttachments(for note:) mirroring Lecture/Assignment/Reading's existing sub-entity shape
+
+Features/Notes/NotesViewModel.swift, NoteListView.swift, NoteFormView.swift (new): plain-text TextEditor body only; no rich text, Markdown, or AI features
+
+Navigation: courseForNotes on CoursesView/CourseRowView and lectureForNotes on LectureListView/LectureRowView, following the exact per-parent pattern used since Phase 3H; no global "All Notes" destination in V1
+
+GoodNotes material is stored as an Attachment (type == "goodnotes", url = deep link) attached to a Note — no new field on Note, no file-import mechanism
+
+Course.notes, Lecture.notes, Reading.notes, Resource.notes, Quiz.notes, Exam.notes are explicitly unchanged — they remain separate, lightweight metadata fields, not superseded by Note
+
+Reading, Assignment, and Resource relationships on Note, a global Notes library, rich text/Markdown, AI summaries/generation, cloud sync, collaboration, knowledge graph, note linking, advanced search, tags, pinning, and favorites are all explicitly deferred — each requires its own future scoping pass and DECISION-0NN before implementation
+```
+
+---
+
 # Decision Index
 
 ```
@@ -2297,6 +2399,11 @@ Flashcard Management V1 Scope
 DECISION-027
 
 Active Recall Management Foundation V1
+
+
+DECISION-028
+
+Notes Management V1 Scope — First-Class Model with Required Attachments
 ```
 
 ---

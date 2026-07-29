@@ -12,6 +12,7 @@ struct RootView: View {
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
+    let noteRepository: any NoteRepositoryProtocol
 
     var body: some View {
         AppShellView(
@@ -25,7 +26,8 @@ struct RootView: View {
             readingRepository: readingRepository,
             resourceRepository: resourceRepository,
             flashcardRepository: flashcardRepository,
-            activeRecallRepository: activeRecallRepository
+            activeRecallRepository: activeRecallRepository,
+            noteRepository: noteRepository
         )
     }
 }

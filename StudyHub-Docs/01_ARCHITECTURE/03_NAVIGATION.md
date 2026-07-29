@@ -405,7 +405,7 @@ Course Detail provides navigation to:
 - Grades
 - Statistics
 
-Current implementation: a dedicated Course Detail page has not been built yet. Lectures, Assignments, Readings, and Resources are each reached directly from the Course row in the Course List:
+Current implementation: a dedicated Course Detail page has not been built yet. Lectures, Assignments, Readings, Resources, Grades, Flashcards, and Notes are each reached directly from the Course row in the Course List:
 
 ```
 Courses
@@ -413,10 +413,13 @@ Courses
       ├── Lectures
       ├── Assignments
       ├── Readings
-      └── Resources
+      ├── Resources
+      ├── Grades
+      ├── Flashcards
+      └── Notes
 ```
 
-Resources are Course-nested only for now — there is no global, cross-course Resources library yet (see DECISION-022). Flashcards, Grades, and Statistics remain planned, reachable through Course Detail once it exists.
+Resources are Course-nested only for now — there is no global, cross-course Resources library yet (see DECISION-022). Notes are likewise Course-nested only in V1, alongside a separate Lecture-nested entry point (see §12, DECISION-028) — there is no global "All Notes" library yet. Statistics remains planned, reachable through Course Detail once it exists.
 
 ---
 
@@ -442,6 +445,18 @@ Lecture Detail provides access to:
 - Active Recall
 - Flashcards
 - GoodNotes
+
+Current implementation: a dedicated Lecture Detail page has not been built yet. Active Recall and Notes are each reached directly from the Lecture row in the Lecture List:
+
+```
+Course
+ └── Lectures
+      └── Lecture
+           ├── Active Recall
+           └── Notes
+```
+
+Both are Lecture-nested only in V1 (see DECISION-027, DECISION-028). Objectives, Attachments, Flashcards, and GoodNotes remain planned, reachable through Lecture Detail once it exists.
 
 ---
 

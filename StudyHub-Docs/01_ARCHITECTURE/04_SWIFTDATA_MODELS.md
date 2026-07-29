@@ -64,7 +64,9 @@ Semester
 │   │
 │   ├── Grade Categories
 │   │
-│   └── Exams
+│   ├── Exams
+│   │
+│   └── Notes
 │
 ├── Statistics
 │
@@ -92,6 +94,7 @@ The application contains the following primary models.
 | GradeCategory | Assessment weights |
 | Flashcard | Learning card |
 | ActiveRecallQuestion | Recall question |
+| Note | Course- or Lecture-scoped note with attachments |
 | StudySession | Study history |
 | Quote | Daily motivation |
 | StatisticsSnapshot | Historical analytics |
@@ -218,6 +221,8 @@ Grade Categories
 Exams
 
 Quizzes
+
+Notes (`noteEntries`)
 ```
 
 ---
@@ -262,6 +267,8 @@ Flashcards
 Active Recall Questions
 
 Attachments
+
+Notes (`noteEntries`)
 ```
 
 ---
@@ -372,7 +379,7 @@ createdAt
 updatedAt
 ```
 
-`updatedAt` was added alongside Resource Management (see DECISION-023), bringing Resource in line with every other primary model's `id`/`createdAt`/`updatedAt` convention (§22).
+`updatedAt` was added alongside Resource Management (see DECISION-023), bringing Resource in line with every other primary model's `id`/`createdAt`/`updatedAt` convention (§23).
 
 Relationship
 
@@ -406,7 +413,7 @@ createdAt
 updatedAt
 ```
 
-`createdAt`/`updatedAt` were added per DECISION-025, bringing Quiz in line with the project-wide id/createdAt/updatedAt convention (§22) at the point Quiz became user-editable (Grade Tracker V1, Phase 3J).
+`createdAt`/`updatedAt` were added per DECISION-025, bringing Quiz in line with the project-wide id/createdAt/updatedAt convention (§23) at the point Quiz became user-editable (Grade Tracker V1, Phase 3J).
 
 Relationship
 
@@ -440,7 +447,7 @@ createdAt
 updatedAt
 ```
 
-`createdAt`/`updatedAt` were added per DECISION-025, bringing Exam in line with the project-wide id/createdAt/updatedAt convention (§22) at the point Exam became user-editable (Grade Tracker V1, Phase 3J).
+`createdAt`/`updatedAt` were added per DECISION-025, bringing Exam in line with the project-wide id/createdAt/updatedAt convention (§23) at the point Exam became user-editable (Grade Tracker V1, Phase 3J).
 
 Relationship
 
@@ -488,7 +495,7 @@ createdAt
 updatedAt
 ```
 
-`createdAt`/`updatedAt` were added per DECISION-025, bringing Grade Category in line with the project-wide id/createdAt/updatedAt convention (§22) at the point Grade Category became user-editable (Grade Tracker V1, Phase 3J).
+`createdAt`/`updatedAt` were added per DECISION-025, bringing Grade Category in line with the project-wide id/createdAt/updatedAt convention (§23) at the point Grade Category became user-editable (Grade Tracker V1, Phase 3J).
 
 Relationship
 
@@ -566,7 +573,41 @@ Lecture
 
 ---
 
-# 16. Study Session
+# 16. Note Model
+
+Represents a Course- or Lecture-scoped note (see DECISION-028).
+
+Properties
+
+```
+id
+
+title
+
+body
+
+createdAt
+
+updatedAt
+```
+
+`body` is plain text only; rich text, Markdown, and AI-generated content are explicitly deferred (see DECISION-028).
+
+Relationships
+
+```
+Course (optional)
+
+Lecture (optional)
+
+Attachments
+```
+
+A Note may belong to a Course, a Lecture, or neither at creation time, but Version 1 only exposes Course- and Lecture-nested entry points — there is no unlinked "General" note or global library yet. Attachments reuse the existing Attachment Model (§20) rather than a separate file-storage structure.
+
+---
+
+# 17. Study Session
 
 Represents one completed study session.
 
@@ -600,7 +641,7 @@ Flashcards Reviewed
 
 ---
 
-# 17. Quote Model
+# 18. Quote Model
 
 Properties
 
@@ -622,7 +663,7 @@ The rotation engine ensures every quote is shown once before repeating.
 
 ---
 
-# 18. Statistics Snapshot
+# 19. Statistics Snapshot
 
 Stores historical statistics.
 
@@ -662,7 +703,7 @@ Semester
 
 ---
 
-# 19. Attachment Model
+# 20. Attachment Model
 
 Represents attached files.
 
@@ -700,11 +741,15 @@ Assignment
 Reading
 
 Resource
+
+Note
 ```
+
+`note` was added per DECISION-028, so a Note's attachments (lecture slides, PDFs, reference documents, or a GoodNotes deep-link reference stored as `type == "goodnotes"`) reuse this model rather than a separate structure.
 
 ---
 
-# 20. Calendar Event Reference
+# 21. Calendar Event Reference
 
 Represents linked calendar events.
 
@@ -734,7 +779,7 @@ Exam
 
 ---
 
-# 21. Enumerations
+# 22. Enumerations
 
 The following enums should be used instead of strings wherever possible.
 
@@ -830,7 +875,7 @@ Mixed
 
 ---
 
-# 22. Common Fields
+# 23. Common Fields
 
 Every persistent model should include:
 
@@ -846,7 +891,7 @@ This simplifies synchronization and auditing.
 
 ---
 
-# 23. Model Ownership
+# 24. Model Ownership
 
 Ownership follows this hierarchy.
 
@@ -877,6 +922,8 @@ Quizzes
 
 Exams
 
+Notes
+
 ↓
 
 Lecture
@@ -888,13 +935,15 @@ Flashcards
 Recall Questions
 
 Attachments
+
+Notes
 ```
 
 Deleting a parent removes all owned children.
 
 ---
 
-# 24. Data Integrity Rules
+# 25. Data Integrity Rules
 
 - A Course must belong to one Semester.
 - A Lecture must belong to one Course.
@@ -904,12 +953,13 @@ Deleting a parent removes all owned children.
 - Grade Categories belong to one Course.
 - Quotes exist globally.
 - Statistics belong to one Semester.
+- A Note may optionally belong to a Course or a Lecture (see DECISION-028); it is never required to have either.
 
 Invalid relationships should never be created.
 
 ---
 
-# 25. Derived Data
+# 26. Derived Data
 
 The following values should **not** be stored.
 
@@ -929,7 +979,7 @@ Derived values reduce duplication and prevent inconsistencies.
 
 ---
 
-# 26. Searchable Models
+# 27. Searchable Models
 
 Global search should index:
 
@@ -946,7 +996,7 @@ Search metadata should be lightweight and updated automatically.
 
 ---
 
-# 27. Future Models
+# 28. Future Models
 
 Reserved for future versions.
 
@@ -963,7 +1013,7 @@ These are intentionally excluded from Version 1.0.
 
 ---
 
-# 28. Migration Strategy
+# 29. Migration Strategy
 
 Models should evolve without data loss.
 
@@ -977,7 +1027,7 @@ Breaking changes should be avoided.
 
 ---
 
-# 29. Performance Guidelines
+# 30. Performance Guidelines
 
 Models should:
 
@@ -989,7 +1039,7 @@ Models should:
 
 ---
 
-# 30. SwiftData Model Summary
+# 31. SwiftData Model Summary
 
 StudyHub's persistence layer is centered around the **Semester → Course → Academic Content** hierarchy.
 
