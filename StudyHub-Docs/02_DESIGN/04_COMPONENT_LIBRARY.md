@@ -313,6 +313,124 @@ Rules:
 
 ---
 
+# 6.6 StudyHubDateField
+
+Purpose:
+
+Compact, tappable date field. Opens a floating native `.graphical` calendar (day/month/year drill-down) anchored to the field, in place of an inline `DatePicker`.
+
+Used for:
+
+- Assignment due date
+- Semester start/end date
+- Lecture date
+
+---
+
+Properties:
+
+```
+label
+
+date (binding)
+```
+
+---
+
+Behavior:
+
+```
+Fixed-width, trailing-aligned value text
+
+No disclosure chevron
+
+Floating popover opens to the right of the field
+
+Falls back automatically only if there is no room on the preferred side
+```
+
+---
+
+# 6.7 StudyHubTimeField
+
+Purpose:
+
+Compact, tappable time field. Opens a floating native `.wheel` time picker (hour / minute / AM-PM) anchored to the field, in place of an inline `DatePicker`.
+
+Used for:
+
+- Assignment due time
+- Lecture start/end time
+
+---
+
+Properties:
+
+```
+label
+
+time (binding)
+```
+
+---
+
+Behavior:
+
+```
+Fixed-width, trailing-aligned value text
+
+No disclosure chevron
+
+Floating popover opens below the field
+
+Falls back automatically only if there is no room below
+```
+
+---
+
+All date and time entry across the app goes through these two components — no screen should use a raw `DatePicker` directly.
+
+---
+
+# 6.8 CustomColorGridView
+
+Purpose:
+
+Full-screen grid-based custom color picker. Presented as a sheet when a form's "Custom..." color row is selected, as an alternative to a system color wheel.
+
+Used by:
+
+- Course color selection (`CourseFormView`)
+- Semester color selection (`SemesterFormView`)
+
+Both features share this one implementation — it lives in `Shared/Components/Color/`, not inside either feature.
+
+---
+
+Behavior:
+
+```
+Grid of swatches spanning 12 hues × 3 brightness levels, plus a grayscale row
+
+Tap a swatch to preview it
+
+Done commits the preview color
+
+Cancel discards the change
+```
+
+---
+
+Supported presets:
+
+Each consuming form defines its own named presets (e.g. Course: Red/Orange/Yellow/Green/Blue/Purple/Brown; Semester: Blue/Green/Orange/Purple/Pink/Gray) stored as plain strings.
+
+Custom color support:
+
+Colors picked from the grid are stored as hex strings via the shared `Color.hexString` / `Color(hex:)` utilities (`Core/Extensions/Color+Hex.swift`) — the same conversion and fallback logic used for reading any stored preset-or-hex color string back into a `Color`.
+
+---
+
 # 7. Layout Components
 
 ---

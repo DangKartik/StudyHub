@@ -253,8 +253,6 @@ The Sidebar represents the application's primary navigation.
 
 📅 Calendar
 
-📝 Assignments
-
 📖 Readings
 
 📂 Resources
@@ -275,6 +273,8 @@ The Sidebar represents the application's primary navigation.
 ```
 
 The Sidebar remains available throughout the application.
+
+Assignments are intentionally not a top-level Sidebar destination. They are scoped to a Course (see §11 and §13) — the same nesting pattern used for Lectures — rather than a global list, since every Assignment belongs to exactly one Course.
 
 ---
 
@@ -405,6 +405,17 @@ Course Detail provides navigation to:
 - Grades
 - Statistics
 
+Current implementation: a dedicated Course Detail page has not been built yet. Lectures and Assignments are reached directly from the Course row in the Course List:
+
+```
+Courses
+ └── Course
+      ├── Lectures
+      └── Assignments
+```
+
+Readings, Flashcards, Resources, Grades, and Statistics remain planned, reachable through Course Detail once it exists.
+
 ---
 
 # 12. Lecture Navigation
@@ -435,7 +446,11 @@ Lecture Detail provides access to:
 # 13. Assignment Navigation
 
 ```
-Assignments
+Courses
+
+↓
+
+Course
 
 ↓
 
@@ -454,7 +469,7 @@ Checklist
 Submission
 ```
 
-Assignments can also be opened from:
+Assignments are scoped to a Course — there is no global, semester-wide Assignment list. Assignment List and Assignment Detail can also be opened from:
 
 - Dashboard
 - Calendar

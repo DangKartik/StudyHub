@@ -26,6 +26,7 @@ final class LectureViewModel {
     }
 
     func createLecture(
+        title: String,
         topic: String,
         date: Date,
         startTime: Date,
@@ -34,7 +35,7 @@ final class LectureViewModel {
         summary: String
     ) {
         let lecture = Lecture(
-            title: "",
+            title: title,
             topic: topic,
             date: date,
             startTime: startTime,
@@ -56,6 +57,7 @@ final class LectureViewModel {
 
     func updateLecture(
         _ lecture: Lecture,
+        title: String,
         topic: String,
         date: Date,
         startTime: Date,
@@ -63,6 +65,7 @@ final class LectureViewModel {
         location: String,
         summary: String
     ) {
+        lecture.title = title
         lecture.topic = topic
         lecture.date = date
         lecture.startTime = startTime

@@ -6,6 +6,7 @@ struct LectureFormView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    @State private var title: String = ""
     @State private var topic: String = ""
     @State private var date: Date = .now
     @State private var startTime: Date = .now
@@ -25,6 +26,7 @@ struct LectureFormView: View {
         NavigationStack {
             Form {
                 Section("Lecture") {
+                    TextField("Title", text: $title)
                     TextField("Topic", text: $topic)
                     StudyHubDateField(label: "Date", date: $date)
                     StudyHubTimeField(label: "Start Time", time: $startTime)
@@ -49,6 +51,7 @@ struct LectureFormView: View {
                         if let lecture {
                             viewModel.updateLecture(
                                 lecture,
+                                title: title,
                                 topic: topic,
                                 date: date,
                                 startTime: startTime,
@@ -58,6 +61,7 @@ struct LectureFormView: View {
                             )
                         } else {
                             viewModel.createLecture(
+                                title: title,
                                 topic: topic,
                                 date: date,
                                 startTime: startTime,
@@ -73,6 +77,7 @@ struct LectureFormView: View {
             }
             .onAppear {
                 if let lecture {
+                    title = lecture.title
                     topic = lecture.topic
                     date = lecture.date
                     startTime = lecture.startTime

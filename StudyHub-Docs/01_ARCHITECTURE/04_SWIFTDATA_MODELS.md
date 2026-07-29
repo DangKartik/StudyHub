@@ -173,6 +173,10 @@ instructor
 
 email
 
+secondInstructor
+
+secondInstructorEmail
+
 officeHours
 
 credits
@@ -181,10 +185,18 @@ goodNotesNotebookID
 
 notes
 
+isArchived
+
 createdAt
 
 updatedAt
 ```
+
+`courseColor` stores either a preset color name (e.g. `"blue"`) or a custom hex string (e.g. `"#3A7DFF"`); resolution and fallback are handled by a shared Color utility, not by the model (see DECISION-018).
+
+`secondInstructor` / `secondInstructorEmail` represent an optional co-instructor as plain fields, not a separate relationship (see DECISION-019).
+
+`isArchived` marks a course as archived, mirroring `Semester.isArchived` (see DECISION-016).
 
 Relationships
 
