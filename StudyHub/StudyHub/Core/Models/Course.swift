@@ -9,6 +9,8 @@ final class Course {
     var courseColor: String = ""
     var instructor: String = ""
     var email: String = ""
+    var secondInstructor: String = ""
+    var secondInstructorEmail: String = ""
     var officeHours: String = ""
     var credits: Int = 0
     var goodNotesNotebookID: String?
@@ -52,6 +54,8 @@ final class Course {
         courseColor: String,
         instructor: String = "",
         email: String = "",
+        secondInstructor: String = "",
+        secondInstructorEmail: String = "",
         officeHours: String = "",
         credits: Int = 0,
         goodNotesNotebookID: String? = nil,
@@ -66,6 +70,8 @@ final class Course {
         self.courseColor = courseColor
         self.instructor = instructor
         self.email = email
+        self.secondInstructor = secondInstructor
+        self.secondInstructorEmail = secondInstructorEmail
         self.officeHours = officeHours
         self.credits = credits
         self.goodNotesNotebookID = goodNotesNotebookID

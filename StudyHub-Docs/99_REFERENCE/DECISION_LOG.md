@@ -1218,6 +1218,236 @@ When progress tracking is designed, it should be evaluated as its own model (or 
 
 ---
 
+# DECISION-018
+
+## Decision
+
+Course color customization will use hex string storage.
+
+---
+
+## Context
+
+`Course.courseColor` is already typed as `String`, currently populated from a fixed 6-entry preset list (`CourseFormView.colorPresets`). [00_COLOR_SYSTEM.md §8](../02_DESIGN/00_COLOR_SYSTEM.md) requires arbitrary user-selected course colors ("Users can customize colors"), which the preset picker was always a placeholder for, not a final implementation (Phase 3D explicitly deferred `ColorPicker`/hex support, not rejected it).
+
+---
+
+## Options Considered
+
+### Keep the fixed preset list
+
+Pros:
+
+```
+Zero additional work
+
+Simple, bounded set of colors to reason about
+```
+
+Cons:
+
+```
+Doesn't satisfy the documented "user-selected color" requirement
+
+Users cannot pick a color outside the 6 presets
+```
+
+---
+
+### Store color as a hex string, backed by a real ColorPicker
+
+Pros:
+
+```
+Course.courseColor is already String — no SwiftData schema change, no migration
+
+Satisfies the documented customization requirement directly
+
+A single, reusable hex<->Color conversion utility replaces per-form preset-matching logic
+```
+
+Cons:
+
+```
+Existing preset-named strings ("blue", "green", ...) from earlier testing won't parse as hex and need a fallback
+```
+
+---
+
+## Decision Reasoning
+
+Since the underlying storage type never needs to change, this is a UI-layer improvement, not a data-layer one. No migration risk, and it closes a gap the color system doc already specifies. The preset picker was explicitly built as a placeholder in Phase 3D, not a permanent design.
+
+---
+
+## Impact
+
+```
+Add a Color hex conversion utility in Core/Extensions
+
+Replace the preset Picker in CourseFormView with a ColorPicker bound through that conversion
+
+Preserve fallback support for existing preset strings (unparseable values default to gray, same as today's behavior) — no data migration performed
+```
+
+---
+
+# DECISION-019
+
+## Decision
+
+Course supports multiple instructors via plain field extension, not a new Professor entity.
+
+---
+
+## Context
+
+`Course` already stores a single instructor's name and email (`instructor`, `email`), matching [05_COURSES.md §12](../03_UI/05_COURSES.md). Some university courses have a second professor (e.g., co-taught courses) with a separate email, which is not currently representable and is not described in any existing doc — this is a new requirement, not an implementation gap.
+
+---
+
+## Options Considered
+
+### Introduce a Professor model with a relationship to Course
+
+Pros:
+
+```
+Would support professors shared across multiple courses, richer professor-level data, and professor-level relationships
+```
+
+Cons:
+
+```
+Nothing in the docs or this requirement describes professors as shared/reused entities across courses
+
+Adds a new model, repository, and CRUD surface to represent what is functionally two text fields
+
+Unjustified complexity relative to the actual need
+```
+
+---
+
+### Extend Course with a second instructor name/email pair
+
+Pros:
+
+```
+Mirrors the existing instructor/email fields exactly — no new pattern to learn
+
+No new repository methods — flows through the existing create/save methods like every other field
+
+Non-breaking, additive, defaulted properties
+```
+
+Cons:
+
+```
+Does not scale gracefully past two instructors (acceptable — no requirement describes more than two)
+```
+
+---
+
+## Decision Reasoning
+
+Professors in StudyHub are per-course free-text contact records, not shared entities with independent identity — no course-to-course professor reuse is described anywhere. A dedicated model would model an identity relationship that doesn't exist in the product's requirements. Plain field extension matches the existing `instructor`/`email` precedent and keeps the change additive.
+
+---
+
+## Impact
+
+```
+Course.swift gains secondInstructor: String and secondInstructorEmail: String (both defaulted, mirroring instructor/email)
+
+CoursesViewModel.createCourse/updateCourse and CourseFormView gain the corresponding parameters/fields
+
+No CourseRepository changes — handled by the existing create/save methods
+
+No new relationships, no new model
+```
+
+---
+
+# DECISION-020
+
+## Decision
+
+Tutorial and Lab support will not be implemented as separate models. When built, they will share a generic `ClassSession` model with `Lecture`, distinguished by a `sessionType` field.
+
+---
+
+## Context
+
+[03_FEATURE_SPECIFICATION.md](../00_FOUNDATION/03_FEATURE_SPECIFICATION.md) lists Labs and Tutorials as in-scope, alongside Lectures, as Course-level content. Neither [04_SWIFTDATA_MODELS.md](../01_ARCHITECTURE/04_SWIFTDATA_MODELS.md) nor [05_DATA_RELATIONSHIPS.md](../01_ARCHITECTURE/05_DATA_RELATIONSHIPS.md) defines a model for either — only `Lecture` exists. This is a genuine specification gap between the product requirements and the data architecture, not just a missing implementation.
+
+`Lecture` (shipped in Phase 3E) holds title, topic, date, startTime, endTime, location, summary, notes, plus relationships to `ActiveRecallQuestion`, `Attachment`, optional `referencedFlashcards`, and `CalendarEventReference`. Structurally, a Tutorial or Lab is the same shape — a scheduled academic session with the same kind of content and tooling attached.
+
+---
+
+## Options Considered
+
+### Duplicate Lecture into separate Tutorial and Lab models
+
+Pros:
+
+```
+No refactor of the already-shipped Lecture feature
+
+Each type can diverge independently if they ever need to
+```
+
+Cons:
+
+```
+Triples the maintenance surface: three repositories, three ViewModels, three Views for functionally identical structures
+
+Every future integration (flashcard generation, active recall, calendar sync) must be built three times
+
+Directly contradicts 04_SWIFTDATA_MODELS.md's own design principle: avoid duplicate data, keep models focused and cohesive
+```
+
+---
+
+### Consolidate into a shared ClassSession model with a sessionType discriminator
+
+Pros:
+
+```
+One repository, one ViewModel, one View family for all three session types
+
+Future learning-tool integrations (flashcards, active recall) are built once, not three times
+
+Matches the documented data-architecture design principles
+```
+
+Cons:
+
+```
+Requires refactoring the already-shipped Lecture feature — LectureRepository, Course.lectures, and the inverse relationships on ActiveRecallQuestion/Attachment/CalendarEventReference all need to migrate
+
+Cost grows the longer it's deferred, since more Lecture-specific tooling is still pending (DECISION-017: flashcards and active recall integration are not yet built)
+```
+
+---
+
+## Decision Reasoning
+
+The two-model-vs-shared-model question is fundamentally an architecture decision, not a feature-addition — building Tutorial/Lab as copies of Lecture first and merging later is strictly more expensive than deciding up front, since it means migrating whatever gets built during the interim too. Given nothing about Lecture's remaining roadmap (Flashcards, Active Recall — both deferred) has landed yet, this is the cheapest point at which to make this call, even though the actual refactor is not happening now.
+
+---
+
+## Impact
+
+```
+No Tutorial or Lab implementation in Phase 3F
+
+When this work is scheduled, Lecture must be generalized into ClassSession (sessionType: .lecture / .tutorial / .lab, plus title, topic, date, startTime, endTime, venue, instructor/TA information, notes) BEFORE Tutorial/Lab features are built — not after
+
+This refactor should be scoped as its own phase, preceding any Tutorial/Lab feature work
+```
+
+---
+
 # Future Decisions
 
 Future decisions should be added using:
@@ -1322,6 +1552,21 @@ Course Archiving Model
 DECISION-017
 
 Lecture Completion Tracking Deferred
+
+
+DECISION-018
+
+Course Color Hex Storage
+
+
+DECISION-019
+
+Course Multiple Instructors
+
+
+DECISION-020
+
+Tutorial/Lab Deferred Pending ClassSession Refactor
 ```
 
 ---

@@ -32,6 +32,7 @@ struct AppShellDetailView: View {
             CoursesView(
                 appState: appState,
                 courseRepository: courseRepository,
+                semesterRepository: semesterRepository,
                 lectureRepository: lectureRepository
             )
         case .some(let destination):

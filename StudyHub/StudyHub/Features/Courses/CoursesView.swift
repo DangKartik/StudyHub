@@ -6,16 +6,19 @@ struct CoursesView: View {
     @State private var viewModel: CoursesViewModel
     @State private var activeSheet: CourseSheet?
     @State private var courseForLectures: Course?
+    @Environment(\.openURL) private var openURL
 
     init(
         appState: AppState,
         courseRepository: any CourseRepositoryProtocol,
+        semesterRepository: any SemesterRepositoryProtocol,
         lectureRepository: any LectureRepositoryProtocol
     ) {
         self.lectureRepository = lectureRepository
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
-            courseRepository: courseRepository
+            courseRepository: courseRepository,
+            semesterRepository: semesterRepository
         ))
     }
 
@@ -76,27 +79,21 @@ struct CoursesView: View {
             if !viewModel.activeCourses.isEmpty {
                 Section("Active Courses") {
                     ForEach(viewModel.activeCourses, id: \.id) { course in
-                        CourseRowView(
-                            course: course,
-                            onViewLectures: { courseForLectures = course }
-                        )
-                        .onTapGesture {
-                            activeSheet = .edit(course)
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button("Archive", systemImage: "archivebox") {
-                                withAnimation {
-                                    viewModel.archive(course)
-                                }
-                            }
-                            .tint(.orange)
-                        }
+                        editableCourseRow(course)
+                    }
+                }
+            }
+
+            ForEach(viewModel.otherSemesterCourses) { group in
+                Section(group.semester.name) {
+                    ForEach(group.courses, id: \.id) { course in
+                        editableCourseRow(course)
                     }
                 }
             }
 
             if !viewModel.archivedCourses.isEmpty {
-                Section("Archived") {
+                Section("Archived Courses") {
                     ForEach(viewModel.archivedCourses, id: \.id) { course in
                         CourseRowView(
                             course: course,
@@ -123,6 +120,32 @@ struct CoursesView: View {
         }
         .listStyle(.insetGrouped)
     }
+
+    @ViewBuilder
+    private func editableCourseRow(_ course: Course) -> some View {
+        CourseRowView(
+            course: course,
+            onViewLectures: { courseForLectures = course }
+        )
+        .onTapGesture {
+            activeSheet = .edit(course)
+        }
+        .swipeActions(edge: .trailing) {
+            Button("Archive", systemImage: "archivebox") {
+                withAnimation {
+                    viewModel.archive(course)
+                }
+            }
+            .tint(.orange)
+
+            if let mailURL = URL.mailto(course.email) {
+                Button("Email", systemImage: "envelope") {
+                    openURL(mailURL)
+                }
+                .tint(.blue)
+            }
+        }
+    }
 }
 
 private enum CourseSheet: Identifiable {
@@ -142,10 +165,12 @@ private struct CourseRowView: View {
     var isArchived: Bool = false
     var onViewLectures: (() -> Void)? = nil
 
+    @Environment(\.openURL) private var openURL
+
     var body: some View {
         HStack {
             Circle()
-                .fill(CourseFormView.colorValue(for: course.courseColor))
+                .fill(Color.courseColor(from: course.courseColor))
                 .frame(width: 12, height: 12)
                 .accessibilityHidden(true)
 
@@ -161,6 +186,16 @@ private struct CourseRowView: View {
                     Text(course.instructor)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+                if let mailURL = URL.mailto(course.email) {
+                    Button {
+                        openURL(mailURL)
+                    } label: {
+                        Text(course.email)
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .accessibilityElement(children: .combine)

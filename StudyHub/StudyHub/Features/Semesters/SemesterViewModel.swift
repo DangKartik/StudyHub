@@ -75,4 +75,50 @@ final class SemesterViewModel {
             loadError = PersistenceError.saveFailed(underlying: error)
         }
     }
+
+    func updateSemester(
+        _ semester: Semester,
+        name: String,
+        startDate: Date,
+        endDate: Date,
+        color: String
+    ) {
+        semester.name = name
+        semester.startDate = startDate
+        semester.endDate = endDate
+        semester.color = color
+
+        do {
+            try semesterRepository.save()
+            loadSemesters()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
+
+    func unarchive(_ semester: Semester) {
+        semester.isArchived = false
+
+        do {
+            try semesterRepository.save()
+            loadSemesters()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
+
+    func deleteSemester(_ semester: Semester) {
+        do {
+            try semesterRepository.delete(semester)
+            loadSemesters()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.deleteFailed(underlying: error)
+        }
+    }
 }

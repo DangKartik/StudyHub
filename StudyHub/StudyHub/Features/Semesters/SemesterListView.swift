@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SemesterListView: View {
     @State private var viewModel: SemesterViewModel
-    @State private var isPresentingCreateSheet = false
+    @State private var activeSheet: SemesterSheet?
 
     init(appState: AppState, semesterRepository: any SemesterRepositoryProtocol) {
         _viewModel = State(wrappedValue: SemesterViewModel(
@@ -27,14 +27,19 @@ struct SemesterListView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    isPresentingCreateSheet = true
+                    activeSheet = .create
                 } label: {
                     Label("Add Semester", systemImage: "plus")
                 }
             }
         }
-        .sheet(isPresented: $isPresentingCreateSheet) {
-            SemesterFormView(viewModel: viewModel)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .create:
+                SemesterFormView(viewModel: viewModel, semester: nil)
+            case .edit(let semester):
+                SemesterFormView(viewModel: viewModel, semester: semester)
+            }
         }
         .onAppear {
             viewModel.loadSemesters()
@@ -53,6 +58,17 @@ struct SemesterListView: View {
             if let active = viewModel.activeSemester {
                 Section("Active Semester") {
                     SemesterRowView(semester: active, isActive: true)
+                        .onTapGesture {
+                            activeSheet = .edit(active)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button("Archive", systemImage: "archivebox") {
+                                withAnimation {
+                                    viewModel.archive(active)
+                                }
+                            }
+                            .tint(.orange)
+                        }
                 }
             }
 
@@ -62,16 +78,27 @@ struct SemesterListView: View {
                         SemesterRowView(
                             semester: semester,
                             isActive: false,
-                            onSetActive: { viewModel.setActive(semester) }
+                            onSetActive: {
+                                withAnimation {
+                                    viewModel.setActive(semester)
+                                }
+                            }
                         )
+                        .onTapGesture {
+                            activeSheet = .edit(semester)
+                        }
                         .swipeActions(edge: .trailing) {
                             Button("Archive", systemImage: "archivebox") {
-                                viewModel.archive(semester)
+                                withAnimation {
+                                    viewModel.archive(semester)
+                                }
                             }
                             .tint(.orange)
 
                             Button("Set Active", systemImage: "checkmark.circle") {
-                                viewModel.setActive(semester)
+                                withAnimation {
+                                    viewModel.setActive(semester)
+                                }
                             }
                             .tint(.blue)
                         }
@@ -83,11 +110,37 @@ struct SemesterListView: View {
                 Section("Archived") {
                     ForEach(viewModel.archivedSemesters, id: \.id) { semester in
                         SemesterRowView(semester: semester, isActive: false, isArchived: true)
+                            .swipeActions(edge: .trailing) {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    withAnimation {
+                                        viewModel.deleteSemester(semester)
+                                    }
+                                }
+
+                                Button("Unarchive", systemImage: "arrow.uturn.backward") {
+                                    withAnimation {
+                                        viewModel.unarchive(semester)
+                                    }
+                                }
+                                .tint(.blue)
+                            }
                     }
                 }
             }
         }
         .listStyle(.insetGrouped)
+    }
+}
+
+private enum SemesterSheet: Identifiable {
+    case create
+    case edit(Semester)
+
+    var id: String {
+        switch self {
+        case .create: return "create"
+        case .edit(let semester): return semester.id.uuidString
+        }
     }
 }
 
