@@ -1529,6 +1529,164 @@ Resource.swift gains no updatedAt field in Phase 3H — this is deferred to whic
 
 ---
 
+# DECISION-022
+
+## Decision
+
+Phase 3I implements Resource Management as a Course-nested feature only. A global Sidebar → Resources library remains planned but is not built now.
+
+---
+
+## Context
+
+DECISION-021 already flagged that `19_RESOURCES.md §4` documents Resources with a dual navigation shape — a top-level Sidebar library and a Course-nested view — while `SidebarDestination` reserves a `.resources` case with no content behind it. Phase 3I needs to actually decide which of these to build, since Resource Management is starting now.
+
+Every shipped academic feature so far (Lectures, Assignments, Readings) follows the same Course-nested shape:
+
+```
+Course
+ ├── Lectures
+ ├── Assignments
+ ├── Readings
+ └── Resources (new)
+```
+
+`ResourceRepository` already implements `fetch(forCourse:)`, matching this shape directly; it has no cross-course listing/filtering support today.
+
+---
+
+## Options Considered
+
+### Build the global Sidebar library now, alongside the Course-nested view
+
+Pros:
+
+```
+Matches 19_RESOURCES.md's "primary" navigation flow exactly
+Uses the SidebarDestination.resources case that has sat unimplemented since it was added
+```
+
+Cons:
+
+```
+Requires cross-course search/filtering architecture that doesn't exist yet — no feature in the app currently loads data across every course in a semester (or across semesters) for a single list
+Doubles this phase's scope for a UI surface with no existing repository support (fetchAll() exists but nothing shapes it for a searchable/filterable global list)
+Every other academic feature (Lectures, Assignments, Readings) shipped nested-only first; building Resources differently breaks that precedent without a clear reason tied to Resources specifically
+```
+
+---
+
+### Course-nested only, matching Lecture/Assignment/Reading exactly
+
+Pros:
+
+```
+Matches the existing, proven Course → Feature pattern used by every prior phase
+No new architecture required — ResourceRepository.fetch(forCourse:) already supports it
+Keeps this phase's scope aligned with what Lecture/Assignment/Reading Management each shipped as their own "V1"
+Global library remains explicitly possible later without re-architecting the nested view — it would be an additive Sidebar destination reading the same Resource data
+```
+
+Cons:
+
+```
+SidebarDestination.resources remains unimplemented for another phase
+Users cannot browse resources across courses until the global library is built
+```
+
+---
+
+## Decision Reasoning
+
+Every academic content feature in StudyHub has shipped Course-nested first, matching the model's actual ownership shape (`Resource.course: Course?`) and requiring zero new repository or navigation architecture. Building a global library now would introduce cross-course loading/filtering that nothing else in the app does yet, inside the same phase that's supposed to ship basic Resource CRUD. Keeping the two concerns separate lets Resource Management V1 ship at the same scope as Lecture/Assignment/Reading V1, with the global library treated as its own future enhancement.
+
+---
+
+## Impact
+
+```
+Features/Resources/ResourceListView.swift is scoped to a single Course, loaded via ResourceRepository.fetch(forCourse:) — identical shape to ReadingListView/LectureListView/AssignmentListView
+
+CoursesView.swift gains a fourth courseForResources: Course? navigation state and a "Resources" entry on CourseRowView, following the exact pattern already used for Lectures/Assignments/Readings — no shared Bool state, no new navigation architecture
+
+SidebarDestination.resources remains reserved but unimplemented after Phase 3I
+
+A future phase must design the global library's data-loading shape (search, filtering, cross-course aggregation) before SidebarDestination.resources can be wired to real content — not decided here
+```
+
+---
+
+# DECISION-023
+
+## Decision
+
+Add `updatedAt: Date` to the `Resource` model, matching every other primary SwiftData model in the app.
+
+---
+
+## Context
+
+`Resource` is the only model in `Core/Models` missing `updatedAt` — `Course`, `Semester`, `Lecture`, `Assignment`, `Reading`, `Quiz`, `Exam`, and others all carry both `createdAt` and `updatedAt`, matching `04_SWIFTDATA_MODELS.md §22`'s "every model should include id, createdAt, updatedAt" rule. This gap was noted but explicitly deferred in DECISION-021 ("Resource.swift gains no updatedAt field in Phase 3H"). Phase 3I now makes `Resource` editable user data for the first time (create/update/delete via `ResourceFormView`), which is the trigger point DECISION-021 anticipated for revisiting this.
+
+---
+
+## Options Considered
+
+### Leave Resource without updatedAt
+
+Pros:
+
+```
+Zero model change
+```
+
+Cons:
+
+```
+Resource becomes the one editable model in the app with no way to tell when it was last modified
+Breaks the "every model has id/createdAt/updatedAt" convention documented in 04_SWIFTDATA_MODELS.md and followed by every other model
+```
+
+---
+
+### Add updatedAt: Date, defaulted like every other model
+
+Pros:
+
+```
+Matches existing convention exactly — same shape as Course.updatedAt, Lecture.updatedAt, etc.
+Minimal, additive, defaulted property — no migration risk, consistent with every other Core model change this project has approved (isArchived, secondInstructor, Course.isArchived)
+Lets ResourceViewModel.updateResource bump the timestamp on edit, same as the field is intended to be used elsewhere
+```
+
+Cons:
+
+```
+Touches a Core model, which per project convention requires this decision entry
+```
+
+---
+
+## Decision Reasoning
+
+This mirrors every previous additive Core-model decision in this log (DECISION-016 isArchived, DECISION-019 secondInstructor/secondInstructorEmail): a small, defaulted, non-breaking field that brings a model in line with an already-established, already-documented convention. Since Resource is only now becoming editable, this is the natural point to close the gap rather than carrying it forward again.
+
+---
+
+## Impact
+
+```
+Resource.swift gains updatedAt: Date = Date.now, both as a stored property and an init parameter (defaulted, matching every other model's pattern)
+
+ResourceViewModel.updateResource(_:) sets resource.updatedAt = Date.now before calling resourceRepository.save(), since the repository's generic save() has no way to know which fields changed
+
+04_SWIFTDATA_MODELS.md's Resource Model section is updated to list updatedAt alongside the existing properties
+
+No other model gains attachments, tags, favorites, or categories as part of this change — those remain out of scope per Phase 3I's stated limits
+```
+
+---
+
 # Future Decisions
 
 Future decisions should be added using:
@@ -1556,6 +1714,42 @@ Impact
 **Desired future direction:** Archived semesters should behave as read-only/historical records. Creation-oriented actions (Add Assignment, Add Lecture, Add Course, Archive/Unarchive, Delete, etc.) should not be exposed while browsing a completed semester's courses; viewing existing data should remain available.
 
 **Why deferred:** This spans Courses, Assignments, and Lectures simultaneously and needs its own scoping pass — e.g., whether "read-only" is enforced at the View layer only or needs an explicit read-only flag threaded through the relevant ViewModels, and how it interacts with the existing active/other/archived course grouping. Not scoped, sized, or approved as part of any phase completed so far.
+
+---
+
+## Approved Future Requirement: Reading Target/Scope Support
+
+**Status:** Approved as a requirement. Not designed, not modeled, not implemented. Reading Management (Phase 3H) shipped without this — it is recorded here as a condition of Reading Tracker being considered feature-complete for Version 1, not as work to start now.
+
+**Current limitation:** `Reading` only supports tracking progress through an entire material, via `pageCount` and `currentPage`. There is no way to scope a reading item to a specific chapter, page range, section, or other partial target.
+
+**Problem:** Real-world reading assignments are frequently target-based rather than whole-book-based. Students are commonly asked to read a specific chapter, a page range, or a section — not an entire text.
+
+Examples:
+
+```
+Read Chapter 5 of Introduction to Algorithms
+
+Read pages 120-180 of Deep Learning
+
+Complete Section 3.2 before the exam
+```
+
+**Future design direction:** A Reading item should eventually support a reading target/scope concept — for example, distinguishing:
+
+```
+Entire Material
+
+Chapter
+
+Page Range
+
+Custom Section
+```
+
+The exact shape (new fields on `Reading`, a separate related model, or something else) is explicitly undecided and out of scope for this note — this entry only records that the requirement is approved, not how it will be built.
+
+**Why deferred:** Phase 3H intentionally shipped the minimal, already-modeled Reading CRUD (title/author/pages/progress/due date/notes) with no model changes. Designing partial-target support requires its own scoping pass — including whether it needs a new model (Core model changes require their own `DECISION-0NN` entry and explicit sign-off per project convention) — and should not be decided implicitly while a different phase is in progress.
 
 ---
 
@@ -1665,6 +1859,16 @@ Tutorial/Lab Deferred Pending ClassSession Refactor
 DECISION-021
 
 Reading Type Deferred; Resource Navigation and updatedAt Deferred to Phase 3I
+
+
+DECISION-022
+
+Resource Management Course-Nested Navigation Scope
+
+
+DECISION-023
+
+Resource.updatedAt Field Added
 ```
 
 ---

@@ -368,7 +368,11 @@ url
 notes
 
 createdAt
+
+updatedAt
 ```
+
+`updatedAt` was added alongside Resource Management (see DECISION-023), bringing Resource in line with every other primary model's `id`/`createdAt`/`updatedAt` convention (§22).
 
 Relationship
 

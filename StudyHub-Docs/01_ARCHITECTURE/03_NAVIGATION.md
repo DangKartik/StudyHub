@@ -405,16 +405,18 @@ Course Detail provides navigation to:
 - Grades
 - Statistics
 
-Current implementation: a dedicated Course Detail page has not been built yet. Lectures and Assignments are reached directly from the Course row in the Course List:
+Current implementation: a dedicated Course Detail page has not been built yet. Lectures, Assignments, Readings, and Resources are each reached directly from the Course row in the Course List:
 
 ```
 Courses
  └── Course
       ├── Lectures
-      └── Assignments
+      ├── Assignments
+      ├── Readings
+      └── Resources
 ```
 
-Readings, Flashcards, Resources, Grades, and Statistics remain planned, reachable through Course Detail once it exists.
+Resources are Course-nested only for now — there is no global, cross-course Resources library yet (see DECISION-022). Flashcards, Grades, and Statistics remain planned, reachable through Course Detail once it exists.
 
 ---
 
