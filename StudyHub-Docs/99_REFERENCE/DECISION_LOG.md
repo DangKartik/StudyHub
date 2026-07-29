@@ -1448,6 +1448,87 @@ This refactor should be scoped as its own phase, preceding any Tutorial/Lab feat
 
 ---
 
+# DECISION-021
+
+## Decision
+
+Reading Type/Category is deferred (no model change in Phase 3H). Resources will eventually support both Course-nested resources and a global Sidebar library, but Phase 3I will implement Course-nested only. `Resource.updatedAt` will be added in Phase 3I, not now.
+
+---
+
+## Context
+
+The Phase 3H planning audit (Readings & Resources) surfaced three open items before Reading Management could start cleanly:
+
+```
+11_READINGS.md's Reading Card mockups show a type/category badge (Textbook, Research Paper, Article, ...), which Reading has no field for today
+
+19_RESOURCES.md §4 documents Resources with a dual navigation shape — a top-level Sidebar library AND a Course-nested view — while SidebarDestination already reserves a .resources case with no content behind it yet
+
+Resource is the only model in the app missing updatedAt, unlike every other model (Course, Semester, Lecture, Assignment, Reading, Quiz, Exam, ...)
+```
+
+All three are legitimate future needs, but none block Reading Management, and none should be decided implicitly by silently shipping (or silently skipping) them inside an unrelated phase.
+
+---
+
+## Options Considered
+
+### Resolve all three now, inside Phase 3H
+
+Pros:
+
+```
+Fewer future Core-model touches
+```
+
+Cons:
+
+```
+Reading Type/Category and Resource.updatedAt are Resource/Reading model changes unrelated to what Phase 3H actually needs to ship
+Deciding Resource's navigation shape before Resource work even starts risks locking in an architecture no Resource UI has been built against yet
+```
+
+---
+
+### Explicitly defer all three, record the intended direction, revisit at the start of the phase that actually needs them
+
+Pros:
+
+```
+Keeps Phase 3H scoped to exactly what Reading Management requires — no model changes
+Resource's navigation decision gets made when Resource UI is actually being designed, not speculatively
+Resource.updatedAt lands as part of Phase 3I's own model touch, following the same one-decision-per-model-change discipline as isArchived/secondInstructor
+```
+
+Cons:
+
+```
+Three more items to track before they're resolved
+```
+
+---
+
+## Decision Reasoning
+
+Phase 3H (Reading Management) needs zero changes to `Reading` or `Resource` — the existing models already support title/author/pages/progress/dueDate/notes CRUD. Introducing a Type field, a navigation-shape commitment, or a timestamp field now would be scope creep unrelated to what's being built, and would each independently qualify as a Core model/architecture change requiring its own sign-off. Recording the intended direction here — without implementing it — keeps that discipline intact while ensuring none of the three items get lost.
+
+---
+
+## Impact
+
+```
+Reading.swift gains no Type/Category field in Phase 3H — Reading Card/List/Form ship without a type badge
+
+SidebarDestination.resources remains reserved but unimplemented; Phase 3I will build Resources nested under Course only (Course → Resources, matching Lecture/Assignment/Reading), not as a top-level Sidebar destination
+
+A future phase (Phase 3I or later, once Resource's global-library UI is actually scoped) must decide, before implementation: nested-only, Sidebar-only, or both — and only then wire SidebarDestination.resources to real content
+
+Resource.swift gains no updatedAt field in Phase 3H — this is deferred to whichever phase first modifies Resource, tracked as an explicit follow-up rather than silently carried forward
+```
+
+---
+
 # Future Decisions
 
 Future decisions should be added using:
@@ -1579,6 +1660,11 @@ Course Multiple Instructors
 DECISION-020
 
 Tutorial/Lab Deferred Pending ClassSession Refactor
+
+
+DECISION-021
+
+Reading Type Deferred; Resource Navigation and updatedAt Deferred to Phase 3I
 ```
 
 ---

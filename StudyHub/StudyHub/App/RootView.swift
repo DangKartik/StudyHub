@@ -8,6 +8,7 @@ struct RootView: View {
     let assignmentRepository: any AssignmentRepositoryProtocol
     let statisticsRepository: any StatisticsRepositoryProtocol
     let lectureRepository: any LectureRepositoryProtocol
+    let readingRepository: any ReadingRepositoryProtocol
 
     var body: some View {
         AppShellView(
@@ -17,7 +18,8 @@ struct RootView: View {
             courseRepository: courseRepository,
             assignmentRepository: assignmentRepository,
             statisticsRepository: statisticsRepository,
-            lectureRepository: lectureRepository
+            lectureRepository: lectureRepository,
+            readingRepository: readingRepository
         )
     }
 }
