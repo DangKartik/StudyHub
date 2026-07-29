@@ -5,17 +5,50 @@ import Foundation
 final class CoursesViewModel {
     private let appState: AppState
     private let courseRepository: any CourseRepositoryProtocol
+    private let semesterRepository: any SemesterRepositoryProtocol
 
     private(set) var courses: [Course] = []
+    private(set) var semesters: [Semester] = []
     private(set) var loadError: StudyHubError?
 
-    init(appState: AppState, courseRepository: any CourseRepositoryProtocol) {
+    init(
+        appState: AppState,
+        courseRepository: any CourseRepositoryProtocol,
+        semesterRepository: any SemesterRepositoryProtocol
+    ) {
         self.appState = appState
         self.courseRepository = courseRepository
+        self.semesterRepository = semesterRepository
+    }
+
+    struct SemesterCourseGroup: Identifiable {
+        let semester: Semester
+        let courses: [Course]
+        var id: UUID { semester.id }
+    }
+
+    var activeSemester: Semester? {
+        appState.activeSemester
     }
 
     var activeCourses: [Course] {
-        courses.filter { !$0.isArchived }
+        courses
+            .filter { !$0.isArchived && $0.semester?.id == appState.activeSemester?.id }
+            .sorted { $0.name < $1.name }
+    }
+
+    var otherSemesterCourses: [SemesterCourseGroup] {
+        let activeID = appState.activeSemester?.id
+        let others = courses.filter {
+            !$0.isArchived && $0.semester != nil && $0.semester?.id != activeID
+        }
+        let grouped = Dictionary(grouping: others) { $0.semester!.id }
+        return grouped.values
+            .compactMap { group -> SemesterCourseGroup? in
+                guard let semester = group.first?.semester else { return nil }
+                return SemesterCourseGroup(semester: semester, courses: group.sorted { $0.name < $1.name })
+            }
+            .sorted { $0.semester.startDate > $1.semester.startDate }
     }
 
     var archivedCourses: [Course] {
@@ -23,14 +56,9 @@ final class CoursesViewModel {
     }
 
     func loadCourses() {
-        guard let semester = appState.activeSemester else {
-            courses = []
-            loadError = nil
-            return
-        }
-
         do {
-            courses = try courseRepository.fetch(forSemester: semester)
+            courses = try courseRepository.fetchAll()
+            semesters = try semesterRepository.fetchAll()
             loadError = nil
         } catch let error as StudyHubError {
             loadError = error
@@ -39,7 +67,16 @@ final class CoursesViewModel {
         }
     }
 
-    func createCourse(name: String, courseCode: String, instructor: String, credits: Int, color: String) {
+    func createCourse(
+        name: String,
+        courseCode: String,
+        instructor: String,
+        email: String,
+        secondInstructor: String,
+        secondInstructorEmail: String,
+        credits: Int,
+        color: String
+    ) {
         guard let semester = appState.activeSemester else { return }
 
         let course = Course(
@@ -47,6 +84,9 @@ final class CoursesViewModel {
             courseCode: courseCode,
             courseColor: color,
             instructor: instructor,
+            email: email,
+            secondInstructor: secondInstructor,
+            secondInstructorEmail: secondInstructorEmail,
             credits: credits
         )
         course.semester = semester
@@ -66,14 +106,22 @@ final class CoursesViewModel {
         name: String,
         courseCode: String,
         instructor: String,
+        email: String,
+        secondInstructor: String,
+        secondInstructorEmail: String,
         credits: Int,
-        color: String
+        color: String,
+        semester: Semester
     ) {
         course.name = name
         course.courseCode = courseCode
         course.instructor = instructor
+        course.email = email
+        course.secondInstructor = secondInstructor
+        course.secondInstructorEmail = secondInstructorEmail
         course.credits = credits
         course.courseColor = color
+        course.semester = semester
 
         do {
             try courseRepository.save()

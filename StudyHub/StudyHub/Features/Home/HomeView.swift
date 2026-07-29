@@ -74,6 +74,7 @@ struct HomeView: View {
                 CoursesView(
                     appState: appState,
                     courseRepository: courseRepository,
+                    semesterRepository: semesterRepository,
                     lectureRepository: lectureRepository
                 )
             }
