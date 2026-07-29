@@ -15,6 +15,7 @@ enum ModelContainerFactory {
             GradeCategory.self,
             Flashcard.self,
             ActiveRecallQuestion.self,
+            Note.self,
             StudySession.self,
             Quote.self,
             StatisticsSnapshot.self,

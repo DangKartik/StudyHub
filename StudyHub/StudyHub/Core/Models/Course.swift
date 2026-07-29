@@ -45,6 +45,9 @@ final class Course {
     @Relationship(deleteRule: .cascade, inverse: \Flashcard.course)
     var flashcards: [Flashcard] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \Note.course)
+    var noteEntries: [Note] = []
+
     var studySessions: [StudySession] = []
 
     init(

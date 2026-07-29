@@ -15,6 +15,7 @@ final class AppContainer {
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
+    let noteRepository: any NoteRepositoryProtocol
     let studySessionRepository: any StudySessionRepositoryProtocol
     let statisticsRepository: any StatisticsRepositoryProtocol
     let quoteRepository: any QuoteRepositoryProtocol
@@ -38,6 +39,7 @@ final class AppContainer {
         resourceRepository = ResourceRepository(modelContext: context)
         flashcardRepository = FlashcardRepository(modelContext: context)
         activeRecallRepository = ActiveRecallRepository(modelContext: context)
+        noteRepository = NoteRepository(modelContext: context)
         studySessionRepository = StudySessionRepository(modelContext: context)
         statisticsRepository = StatisticsRepository(modelContext: context)
         quoteRepository = QuoteRepository(modelContext: context)

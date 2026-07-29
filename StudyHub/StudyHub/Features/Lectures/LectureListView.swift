@@ -2,17 +2,21 @@ import SwiftUI
 
 struct LectureListView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
+    let noteRepository: any NoteRepositoryProtocol
 
     @State private var viewModel: LectureViewModel
     @State private var activeSheet: LectureSheet?
     @State private var lectureForActiveRecall: Lecture?
+    @State private var lectureForNotes: Lecture?
 
     init(
         course: Course,
         lectureRepository: any LectureRepositoryProtocol,
-        activeRecallRepository: any ActiveRecallRepositoryProtocol
+        activeRecallRepository: any ActiveRecallRepositoryProtocol,
+        noteRepository: any NoteRepositoryProtocol
     ) {
         self.activeRecallRepository = activeRecallRepository
+        self.noteRepository = noteRepository
         _viewModel = State(wrappedValue: LectureViewModel(
             course: course,
             lectureRepository: lectureRepository
@@ -59,6 +63,16 @@ struct LectureListView: View {
                 ActiveRecallListView(lecture: lectureForActiveRecall, activeRecallRepository: activeRecallRepository)
             }
         }
+        .navigationDestination(isPresented: Binding(
+            get: { lectureForNotes != nil },
+            set: { isPresented in
+                if !isPresented { lectureForNotes = nil }
+            }
+        )) {
+            if let lectureForNotes {
+                NotesListView(lecture: lectureForNotes, noteRepository: noteRepository)
+            }
+        }
         .onAppear {
             viewModel.loadLectures()
         }
@@ -76,7 +90,8 @@ struct LectureListView: View {
             ForEach(viewModel.lectures, id: \.id) { lecture in
                 LectureRowView(
                     lecture: lecture,
-                    onViewActiveRecall: { lectureForActiveRecall = lecture }
+                    onViewActiveRecall: { lectureForActiveRecall = lecture },
+                    onViewNotes: { lectureForNotes = lecture }
                 )
                 .onTapGesture {
                     activeSheet = .edit(lecture)
@@ -107,6 +122,7 @@ private enum LectureSheet: Identifiable {
 private struct LectureRowView: View {
     let lecture: Lecture
     var onViewActiveRecall: (() -> Void)? = nil
+    var onViewNotes: (() -> Void)? = nil
 
     var body: some View {
         HStack {
@@ -134,6 +150,15 @@ private struct LectureRowView: View {
                 .buttonStyle(.bordered)
                 .font(.caption)
                 .accessibilityLabel("View active recall questions for \(lecture.topic).")
+            }
+
+            if let onViewNotes {
+                Button(action: onViewNotes) {
+                    Label("Notes", systemImage: "note.text")
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                .accessibilityLabel("View notes for \(lecture.topic).")
             }
         }
     }

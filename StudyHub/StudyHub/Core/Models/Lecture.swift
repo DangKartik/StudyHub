@@ -26,6 +26,9 @@ final class Lecture {
     @Relationship(deleteRule: .nullify, inverse: \Flashcard.lecture)
     var referencedFlashcards: [Flashcard] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \Note.lecture)
+    var noteEntries: [Note] = []
+
     @Relationship(deleteRule: .cascade)
     var calendarEventReference: CalendarEventReference?
 

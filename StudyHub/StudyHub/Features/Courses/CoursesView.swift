@@ -8,6 +8,7 @@ struct CoursesView: View {
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
+    let noteRepository: any NoteRepositoryProtocol
 
     @State private var viewModel: CoursesViewModel
     @State private var activeSheet: CourseSheet?
@@ -17,6 +18,7 @@ struct CoursesView: View {
     @State private var courseForResources: Course?
     @State private var courseForGrades: Course?
     @State private var courseForFlashcards: Course?
+    @State private var courseForNotes: Course?
     @Environment(\.openURL) private var openURL
 
     init(
@@ -28,7 +30,8 @@ struct CoursesView: View {
         readingRepository: any ReadingRepositoryProtocol,
         resourceRepository: any ResourceRepositoryProtocol,
         flashcardRepository: any FlashcardRepositoryProtocol,
-        activeRecallRepository: any ActiveRecallRepositoryProtocol
+        activeRecallRepository: any ActiveRecallRepositoryProtocol,
+        noteRepository: any NoteRepositoryProtocol
     ) {
         self.courseRepository = courseRepository
         self.lectureRepository = lectureRepository
@@ -37,6 +40,7 @@ struct CoursesView: View {
         self.resourceRepository = resourceRepository
         self.flashcardRepository = flashcardRepository
         self.activeRecallRepository = activeRecallRepository
+        self.noteRepository = noteRepository
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -84,7 +88,8 @@ struct CoursesView: View {
                 LectureListView(
                     course: courseForLectures,
                     lectureRepository: lectureRepository,
-                    activeRecallRepository: activeRecallRepository
+                    activeRecallRepository: activeRecallRepository,
+                    noteRepository: noteRepository
                 )
             }
         }
@@ -138,6 +143,16 @@ struct CoursesView: View {
                 FlashcardListView(course: courseForFlashcards, flashcardRepository: flashcardRepository)
             }
         }
+        .navigationDestination(isPresented: Binding(
+            get: { courseForNotes != nil },
+            set: { isPresented in
+                if !isPresented { courseForNotes = nil }
+            }
+        )) {
+            if let courseForNotes {
+                NotesListView(course: courseForNotes, noteRepository: noteRepository)
+            }
+        }
         .onAppear {
             viewModel.loadCourses()
         }
@@ -179,7 +194,8 @@ struct CoursesView: View {
                             onViewReadings: { courseForReadings = course },
                             onViewResources: { courseForResources = course },
                             onViewGrades: { courseForGrades = course },
-                            onViewFlashcards: { courseForFlashcards = course }
+                            onViewFlashcards: { courseForFlashcards = course },
+                            onViewNotes: { courseForNotes = course }
                         )
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
@@ -211,7 +227,8 @@ struct CoursesView: View {
             onViewReadings: { courseForReadings = course },
             onViewResources: { courseForResources = course },
             onViewGrades: { courseForGrades = course },
-            onViewFlashcards: { courseForFlashcards = course }
+            onViewFlashcards: { courseForFlashcards = course },
+            onViewNotes: { courseForNotes = course }
         )
         .onTapGesture {
             activeSheet = .edit(course)
@@ -255,6 +272,7 @@ private struct CourseRowView: View {
     var onViewResources: (() -> Void)? = nil
     var onViewGrades: (() -> Void)? = nil
     var onViewFlashcards: (() -> Void)? = nil
+    var onViewNotes: (() -> Void)? = nil
 
     @Environment(\.openURL) private var openURL
 
@@ -354,6 +372,15 @@ private struct CourseRowView: View {
                 .buttonStyle(.bordered)
                 .font(.caption)
                 .accessibilityLabel("View flashcards for \(course.name).")
+            }
+
+            if let onViewNotes {
+                Button(action: onViewNotes) {
+                    Label("Notes", systemImage: "note.text")
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                .accessibilityLabel("View notes for \(course.name).")
             }
         }
     }
