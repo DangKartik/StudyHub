@@ -6,6 +6,7 @@ struct CoursesView: View {
     let assignmentRepository: any AssignmentRepositoryProtocol
     let readingRepository: any ReadingRepositoryProtocol
     let resourceRepository: any ResourceRepositoryProtocol
+    let flashcardRepository: any FlashcardRepositoryProtocol
 
     @State private var viewModel: CoursesViewModel
     @State private var activeSheet: CourseSheet?
@@ -14,6 +15,7 @@ struct CoursesView: View {
     @State private var courseForReadings: Course?
     @State private var courseForResources: Course?
     @State private var courseForGrades: Course?
+    @State private var courseForFlashcards: Course?
     @Environment(\.openURL) private var openURL
 
     init(
@@ -23,13 +25,15 @@ struct CoursesView: View {
         lectureRepository: any LectureRepositoryProtocol,
         assignmentRepository: any AssignmentRepositoryProtocol,
         readingRepository: any ReadingRepositoryProtocol,
-        resourceRepository: any ResourceRepositoryProtocol
+        resourceRepository: any ResourceRepositoryProtocol,
+        flashcardRepository: any FlashcardRepositoryProtocol
     ) {
         self.courseRepository = courseRepository
         self.lectureRepository = lectureRepository
         self.assignmentRepository = assignmentRepository
         self.readingRepository = readingRepository
         self.resourceRepository = resourceRepository
+        self.flashcardRepository = flashcardRepository
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -117,6 +121,16 @@ struct CoursesView: View {
                 GradesListView(course: courseForGrades, courseRepository: courseRepository)
             }
         }
+        .navigationDestination(isPresented: Binding(
+            get: { courseForFlashcards != nil },
+            set: { isPresented in
+                if !isPresented { courseForFlashcards = nil }
+            }
+        )) {
+            if let courseForFlashcards {
+                FlashcardListView(course: courseForFlashcards, flashcardRepository: flashcardRepository)
+            }
+        }
         .onAppear {
             viewModel.loadCourses()
         }
@@ -157,7 +171,8 @@ struct CoursesView: View {
                             onViewAssignments: { courseForAssignments = course },
                             onViewReadings: { courseForReadings = course },
                             onViewResources: { courseForResources = course },
-                            onViewGrades: { courseForGrades = course }
+                            onViewGrades: { courseForGrades = course },
+                            onViewFlashcards: { courseForFlashcards = course }
                         )
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
@@ -188,7 +203,8 @@ struct CoursesView: View {
             onViewAssignments: { courseForAssignments = course },
             onViewReadings: { courseForReadings = course },
             onViewResources: { courseForResources = course },
-            onViewGrades: { courseForGrades = course }
+            onViewGrades: { courseForGrades = course },
+            onViewFlashcards: { courseForFlashcards = course }
         )
         .onTapGesture {
             activeSheet = .edit(course)
@@ -231,6 +247,7 @@ private struct CourseRowView: View {
     var onViewReadings: (() -> Void)? = nil
     var onViewResources: (() -> Void)? = nil
     var onViewGrades: (() -> Void)? = nil
+    var onViewFlashcards: (() -> Void)? = nil
 
     @Environment(\.openURL) private var openURL
 
@@ -321,6 +338,15 @@ private struct CourseRowView: View {
                 .buttonStyle(.bordered)
                 .font(.caption)
                 .accessibilityLabel("View grades for \(course.name).")
+            }
+
+            if let onViewFlashcards {
+                Button(action: onViewFlashcards) {
+                    Label("Flashcards", systemImage: "rectangle.stack")
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                .accessibilityLabel("View flashcards for \(course.name).")
             }
         }
     }

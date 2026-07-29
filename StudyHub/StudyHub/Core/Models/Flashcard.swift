@@ -15,6 +15,7 @@ final class Flashcard {
     var easeFactor: Double = 2.5
     var interval: Double = 0
     var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     var course: Course?
     var lecture: Lecture?
@@ -31,7 +32,8 @@ final class Flashcard {
         reviewCount: Int = 0,
         easeFactor: Double = 2.5,
         interval: Double = 0,
-        createdAt: Date = Date.now
+        createdAt: Date = Date.now,
+        updatedAt: Date = Date.now
     ) {
         self.id = id
         self.front = front
@@ -45,5 +47,6 @@ final class Flashcard {
         self.easeFactor = easeFactor
         self.interval = interval
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }
