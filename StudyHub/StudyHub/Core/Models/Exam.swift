@@ -10,6 +10,8 @@ final class Exam {
     var weight: Double = 0
     var duration: TimeInterval = 0
     var notes: String = ""
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     var course: Course?
 
@@ -23,7 +25,9 @@ final class Exam {
         location: String = "",
         weight: Double = 0,
         duration: TimeInterval = 0,
-        notes: String = ""
+        notes: String = "",
+        createdAt: Date = Date.now,
+        updatedAt: Date = Date.now
     ) {
         self.id = id
         self.title = title
@@ -32,5 +36,7 @@ final class Exam {
         self.weight = weight
         self.duration = duration
         self.notes = notes
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }

@@ -8,6 +8,8 @@ final class GradeCategory {
     var weight: Double = 0
     var earnedScore: Double = 0
     var maximumScore: Double = 100
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     var course: Course?
 
@@ -16,12 +18,16 @@ final class GradeCategory {
         title: String,
         weight: Double,
         earnedScore: Double = 0,
-        maximumScore: Double = 100
+        maximumScore: Double = 100,
+        createdAt: Date = Date.now,
+        updatedAt: Date = Date.now
     ) {
         self.id = id
         self.title = title
         self.weight = weight
         self.earnedScore = earnedScore
         self.maximumScore = maximumScore
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }

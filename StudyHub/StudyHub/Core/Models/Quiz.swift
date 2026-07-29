@@ -10,6 +10,8 @@ final class Quiz {
     var score: Double?
     var maximumScore: Double = 100
     var notes: String = ""
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     var course: Course?
 
@@ -20,7 +22,9 @@ final class Quiz {
         weight: Double = 0,
         score: Double? = nil,
         maximumScore: Double = 100,
-        notes: String = ""
+        notes: String = "",
+        createdAt: Date = Date.now,
+        updatedAt: Date = Date.now
     ) {
         self.id = id
         self.title = title
@@ -29,5 +33,7 @@ final class Quiz {
         self.score = score
         self.maximumScore = maximumScore
         self.notes = notes
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }
