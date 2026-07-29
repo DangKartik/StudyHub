@@ -5,8 +5,15 @@ struct HomeView: View {
     let semesterRepository: any SemesterRepositoryProtocol
     let courseRepository: any CourseRepositoryProtocol
     let lectureRepository: any LectureRepositoryProtocol
+    let assignmentRepository: any AssignmentRepositoryProtocol
 
     @State private var viewModel: HomeViewModel
+
+    private static let upcomingDueDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMMM yyyy"
+        return formatter
+    }()
 
     init(
         appState: AppState,
@@ -20,6 +27,7 @@ struct HomeView: View {
         self.semesterRepository = semesterRepository
         self.courseRepository = courseRepository
         self.lectureRepository = lectureRepository
+        self.assignmentRepository = assignmentRepository
         _viewModel = State(wrappedValue: HomeViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -75,26 +83,33 @@ struct HomeView: View {
                     appState: appState,
                     courseRepository: courseRepository,
                     semesterRepository: semesterRepository,
-                    lectureRepository: lectureRepository
+                    lectureRepository: lectureRepository,
+                    assignmentRepository: assignmentRepository
                 )
             }
         }
     }
 
+    @ViewBuilder
     private var todaySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Today")
                 .font(.title2.bold())
 
             if viewModel.assignmentsDueToday.isEmpty {
-                Text("Nothing due today.")
-                    .foregroundStyle(.secondary)
-            } else {
-                Text(
-                    "\(viewModel.assignmentsDueToday.count) " +
-                    (viewModel.assignmentsDueToday.count == 1 ? "assignment" : "assignments") +
-                    " due today"
+                StudyHubEmptyState(
+                    icon: "checkmark.circle",
+                    title: "Nothing Due Today",
+                    message: "You're all caught up for today."
                 )
+            } else {
+                ForEach(viewModel.assignmentsDueToday, id: \.id) { assignment in
+                    AssignmentSummaryRow(
+                        assignment: assignment,
+                        dueLabel: "Due: \(assignment.dueDate.formatted(date: .omitted, time: .shortened))"
+                    )
+                    Divider()
+                }
             }
         }
     }
@@ -113,20 +128,10 @@ struct HomeView: View {
                 )
             } else {
                 ForEach(viewModel.upcomingAssignments, id: \.id) { assignment in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(assignment.title)
-                            if let courseName = assignment.course?.name {
-                                Text(courseName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        Spacer()
-                        Text(assignment.dueDate, style: .date)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    AssignmentSummaryRow(
+                        assignment: assignment,
+                        dueLabel: "Due: \(HomeView.upcomingDueDateFormatter.string(from: assignment.dueDate))"
+                    )
                     Divider()
                 }
             }
@@ -148,6 +153,52 @@ struct HomeView: View {
                     message: "Not enough study data yet."
                 )
             }
+        }
+    }
+}
+
+private struct AssignmentSummaryRow: View {
+    let assignment: Assignment
+    let dueLabel: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(assignment.title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(assignment.priority.label)
+                    .font(.caption)
+                    .foregroundStyle(priorityColor)
+            }
+            if let courseLabel {
+                Text(courseLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text(dueLabel)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(assignment.title)." +
+            (courseLabel.map { " \($0)." } ?? "") +
+            " \(dueLabel). \(assignment.priority.label) priority."
+        )
+    }
+
+    private var courseLabel: String? {
+        guard let course = assignment.course else { return nil }
+        return course.name.isEmpty ? course.courseCode : course.name
+    }
+
+    private var priorityColor: Color {
+        switch assignment.priority {
+        case .low: return .green
+        case .medium: return .blue
+        case .high: return .orange
+        case .critical: return .red
         }
     }
 }

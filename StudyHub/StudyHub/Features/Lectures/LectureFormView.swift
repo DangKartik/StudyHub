@@ -26,9 +26,9 @@ struct LectureFormView: View {
             Form {
                 Section("Lecture") {
                     TextField("Topic", text: $topic)
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
-                    DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
-                    DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                    StudyHubDateField(label: "Date", date: $date)
+                    StudyHubTimeField(label: "Start Time", time: $startTime)
+                    StudyHubTimeField(label: "End Time", time: $endTime)
                     TextField("Location", text: $location)
                 }
 

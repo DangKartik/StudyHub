@@ -53,8 +53,8 @@ struct SemesterFormView: View {
             Form {
                 Section("Semester") {
                     TextField("Name", text: $name)
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
-                    DatePicker("End Date", selection: $endDate, displayedComponents: .date)
+                    StudyHubDateField(label: "Start Date", date: $startDate)
+                    StudyHubDateField(label: "End Date", date: $endDate)
 
                     if !isEndDateValid {
                         Text("End date must be on or after the start date.")
