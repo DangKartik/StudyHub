@@ -1996,6 +1996,79 @@ The app should automatically calculate: assessment percentage, category percenta
 
 ---
 
+# DECISION-026
+
+## Decision
+
+Phase 3K (Flashcard Management) ships as a CRUD-only foundation: create, edit, delete, and view flashcards scoped to a Course, with an optional Lecture reference via a simple picker. `Flashcard.updatedAt` is added to close the model's timestamp gap. Tags remain deferred — the existing `tags` field is untouched, with no UI. Review mode, spaced repetition, and AI generation are explicitly out of scope.
+
+---
+
+## Context
+
+The Phase 3K planning audit found `Flashcard` and `FlashcardRepository` fully built since Phase 2 with zero UI consumers, and both relationship sides already wired: `Course.flashcards` (owned) and `Lecture.referencedFlashcards` (nullify, reference-not-owned, matching `05_DATA_RELATIONSHIPS.md §14`). The model also carries spaced-repetition fields (`difficulty`, `nextReviewDate`, `lastReviewed`, `reviewCount`, `easeFactor`, `interval`) and a `tags: [String]` field that no UI has ever touched. The audit also flagged `Flashcard` as the only remaining model missing `updatedAt` (it has `createdAt` only) — the same gap class already closed for `Resource` (DECISION-023) and `GradeCategory`/`Quiz`/`Exam` (DECISION-025).
+
+---
+
+## Options Considered
+
+### Ship CRUD plus a first pass at spaced-repetition review mode together
+
+Pros:
+
+```
+One phase instead of two
+```
+
+Cons:
+
+```
+Review mode (flip animation, Again/Hard/Good/Easy buttons, SM-2 interval math) is a materially different, larger UI surface than any CRUD form built in this project so far — no prior phase has built anything like it
+Conflates "can the data exist" with "can you study it," the same split already made deliberately for Reading (Highlights/Annotations deferred) and Resource (Viewer deferred)
+```
+
+---
+
+### CRUD-only foundation, matching every prior phase's V1 scope exactly
+
+Pros:
+
+```
+Matches the established pattern for every feature shipped so far (Lecture, Assignment, Reading, Resource, Grade Tracker) — foundation first, richer interaction later
+Flashcard and FlashcardRepository already fully support this scope with zero repository changes
+Both Course and Lecture relationships already exist and need no model work beyond the timestamp fix
+```
+
+Cons:
+
+```
+Spaced-repetition fields (nextReviewDate, reviewCount, easeFactor, interval) ship unused for another phase
+```
+
+---
+
+## Decision Reasoning
+
+Every feature phase in this project has deliberately shipped a CRUD foundation before any richer, feature-specific interaction layer — Lecture before completion tracking, Reading before Highlights, Resource before its Viewer, Grade Tracker before the assessment hierarchy. Flashcard's review-mode surface is the largest such deferred layer yet (a full spaced-repetition study interface), making the CRUD/review split even more clearly warranted here than in prior phases. Including a simple, optional Lecture picker is in scope because both relationship sides already exist and it requires no new architecture — unlike tags, which would need its own UI/search design work better done alongside Study Mode, per the existing Lecture-linking precedent of only including what's already fully modeled.
+
+---
+
+## Impact
+
+```
+Flashcard.swift gains updatedAt: Date = Date.now, both as a stored property and a defaulted init parameter, matching every other model's convention
+
+FlashcardsViewModel.updateFlashcard(_:) sets updatedAt = Date.now before calling flashcardRepository.save(), same pattern as ResourceViewModel/GradesViewModel
+
+FlashcardFormView includes a simple optional Lecture picker (the course's own lectures, "None" option included) — no new relationship, no new repository method; uses the existing lecture: Lecture? property directly
+
+Flashcard.tags is not surfaced in any UI this phase — left exactly as-is, no reads or writes
+
+No review mode, flip animation, spaced repetition, SM-2 algorithm, difficulty buttons, due-review queue, or AI generation in Phase 3K — each requires its own future scoping pass and DECISION-0NN before implementation
+```
+
+---
+
 # Decision Index
 
 ```
@@ -2122,6 +2195,11 @@ Grade Tracker V1 Weighted Grading Methodology
 DECISION-025
 
 GradeCategory/Quiz/Exam Timestamps Added
+
+
+DECISION-026
+
+Flashcard Management V1 Scope
 ```
 
 ---
