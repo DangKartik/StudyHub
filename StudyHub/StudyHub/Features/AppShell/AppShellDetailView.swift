@@ -33,7 +33,8 @@ struct AppShellDetailView: View {
                 appState: appState,
                 courseRepository: courseRepository,
                 semesterRepository: semesterRepository,
-                lectureRepository: lectureRepository
+                lectureRepository: lectureRepository,
+                assignmentRepository: assignmentRepository
             )
         case .some(let destination):
             StudyHubEmptyState(

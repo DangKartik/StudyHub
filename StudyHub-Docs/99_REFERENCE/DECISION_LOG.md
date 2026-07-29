@@ -1466,6 +1466,18 @@ Impact
 
 ---
 
+## Noted for Future Scoping: Completed/Archived Semester Read-Only Mode
+
+**Status:** Not implemented. Not yet approved as a decision — flagged here only so it isn't lost, per an explicit "note this for later, don't build it now" request.
+
+**Issue:** Completed (archived) semesters currently expose the same course-level actions as active semesters — e.g., `CourseRowView`'s "Assignments" and "Lectures" entry points appear identically regardless of whether the course belongs to the active semester or a past, archived one (see `CoursesViewModel.otherSemesterCourses`, which already separates active-semester courses from other-semester courses but does not distinguish "other" from "archived/completed").
+
+**Desired future direction:** Archived semesters should behave as read-only/historical records. Creation-oriented actions (Add Assignment, Add Lecture, Add Course, Archive/Unarchive, Delete, etc.) should not be exposed while browsing a completed semester's courses; viewing existing data should remain available.
+
+**Why deferred:** This spans Courses, Assignments, and Lectures simultaneously and needs its own scoping pass — e.g., whether "read-only" is enforced at the View layer only or needs an explicit read-only flag threaded through the relevant ViewModels, and how it interacts with the existing active/other/archived course grouping. Not scoped, sized, or approved as part of any phase completed so far.
+
+---
+
 # Decision Index
 
 ```
