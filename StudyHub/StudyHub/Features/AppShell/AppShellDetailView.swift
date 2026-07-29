@@ -11,6 +11,7 @@ struct AppShellDetailView: View {
     let readingRepository: any ReadingRepositoryProtocol
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
+    let activeRecallRepository: any ActiveRecallRepositoryProtocol
 
     var body: some View {
         NavigationStack {
@@ -32,7 +33,8 @@ struct AppShellDetailView: View {
                 lectureRepository: lectureRepository,
                 readingRepository: readingRepository,
                 resourceRepository: resourceRepository,
-                flashcardRepository: flashcardRepository
+                flashcardRepository: flashcardRepository,
+                activeRecallRepository: activeRecallRepository
             )
         case .courses:
             CoursesView(
@@ -43,7 +45,8 @@ struct AppShellDetailView: View {
                 assignmentRepository: assignmentRepository,
                 readingRepository: readingRepository,
                 resourceRepository: resourceRepository,
-                flashcardRepository: flashcardRepository
+                flashcardRepository: flashcardRepository,
+                activeRecallRepository: activeRecallRepository
             )
         case .some(let destination):
             StudyHubEmptyState(

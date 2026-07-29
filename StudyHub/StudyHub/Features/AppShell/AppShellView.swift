@@ -11,6 +11,7 @@ struct AppShellView: View {
     let readingRepository: any ReadingRepositoryProtocol
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
+    let activeRecallRepository: any ActiveRecallRepositoryProtocol
 
     var body: some View {
         NavigationSplitView {
@@ -26,7 +27,8 @@ struct AppShellView: View {
                 lectureRepository: lectureRepository,
                 readingRepository: readingRepository,
                 resourceRepository: resourceRepository,
-                flashcardRepository: flashcardRepository
+                flashcardRepository: flashcardRepository,
+                activeRecallRepository: activeRecallRepository
             )
         }
     }

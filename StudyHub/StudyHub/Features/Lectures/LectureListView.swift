@@ -1,10 +1,18 @@
 import SwiftUI
 
 struct LectureListView: View {
+    let activeRecallRepository: any ActiveRecallRepositoryProtocol
+
     @State private var viewModel: LectureViewModel
     @State private var activeSheet: LectureSheet?
+    @State private var lectureForActiveRecall: Lecture?
 
-    init(course: Course, lectureRepository: any LectureRepositoryProtocol) {
+    init(
+        course: Course,
+        lectureRepository: any LectureRepositoryProtocol,
+        activeRecallRepository: any ActiveRecallRepositoryProtocol
+    ) {
+        self.activeRecallRepository = activeRecallRepository
         _viewModel = State(wrappedValue: LectureViewModel(
             course: course,
             lectureRepository: lectureRepository
@@ -41,6 +49,16 @@ struct LectureListView: View {
                 LectureFormView(viewModel: viewModel, lecture: lecture)
             }
         }
+        .navigationDestination(isPresented: Binding(
+            get: { lectureForActiveRecall != nil },
+            set: { isPresented in
+                if !isPresented { lectureForActiveRecall = nil }
+            }
+        )) {
+            if let lectureForActiveRecall {
+                ActiveRecallListView(lecture: lectureForActiveRecall, activeRecallRepository: activeRecallRepository)
+            }
+        }
         .onAppear {
             viewModel.loadLectures()
         }
@@ -56,15 +74,18 @@ struct LectureListView: View {
             }
 
             ForEach(viewModel.lectures, id: \.id) { lecture in
-                LectureRowView(lecture: lecture)
-                    .onTapGesture {
-                        activeSheet = .edit(lecture)
+                LectureRowView(
+                    lecture: lecture,
+                    onViewActiveRecall: { lectureForActiveRecall = lecture }
+                )
+                .onTapGesture {
+                    activeSheet = .edit(lecture)
+                }
+                .swipeActions(edge: .trailing) {
+                    Button("Delete", systemImage: "trash", role: .destructive) {
+                        viewModel.deleteLecture(lecture)
                     }
-                    .swipeActions(edge: .trailing) {
-                        Button("Delete", systemImage: "trash", role: .destructive) {
-                            viewModel.deleteLecture(lecture)
-                        }
-                    }
+                }
             }
         }
         .listStyle(.insetGrouped)
@@ -85,21 +106,35 @@ private enum LectureSheet: Identifiable {
 
 private struct LectureRowView: View {
     let lecture: Lecture
+    var onViewActiveRecall: (() -> Void)? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(lecture.topic)
-                .font(.headline)
-            HStack(spacing: 6) {
-                Text(lecture.date.formatted(date: .abbreviated, time: .omitted))
-                if !lecture.location.isEmpty {
-                    Text("· \(lecture.location)")
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(lecture.topic)
+                    .font(.headline)
+                HStack(spacing: 6) {
+                    Text(lecture.date.formatted(date: .abbreviated, time: .omitted))
+                    if !lecture.location.isEmpty {
+                        Text("· \(lecture.location)")
+                    }
                 }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(lecture.topic). \(lecture.date.formatted(date: .abbreviated, time: .omitted)).")
+
+            Spacer()
+
+            if let onViewActiveRecall {
+                Button(action: onViewActiveRecall) {
+                    Label("Active Recall", systemImage: "brain.head.profile")
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                .accessibilityLabel("View active recall questions for \(lecture.topic).")
+            }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(lecture.topic). \(lecture.date.formatted(date: .abbreviated, time: .omitted)).")
     }
 }

@@ -18,7 +18,8 @@ struct StudyHubApp: App {
                 lectureRepository: container.lectureRepository,
                 readingRepository: container.readingRepository,
                 resourceRepository: container.resourceRepository,
-                flashcardRepository: container.flashcardRepository
+                flashcardRepository: container.flashcardRepository,
+                activeRecallRepository: container.activeRecallRepository
             )
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
