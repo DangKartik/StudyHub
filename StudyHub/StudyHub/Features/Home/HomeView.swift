@@ -9,6 +9,7 @@ struct HomeView: View {
     let readingRepository: any ReadingRepositoryProtocol
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
+    let activeRecallRepository: any ActiveRecallRepositoryProtocol
 
     @State private var viewModel: HomeViewModel
 
@@ -27,7 +28,8 @@ struct HomeView: View {
         lectureRepository: any LectureRepositoryProtocol,
         readingRepository: any ReadingRepositoryProtocol,
         resourceRepository: any ResourceRepositoryProtocol,
-        flashcardRepository: any FlashcardRepositoryProtocol
+        flashcardRepository: any FlashcardRepositoryProtocol,
+        activeRecallRepository: any ActiveRecallRepositoryProtocol
     ) {
         self.appState = appState
         self.semesterRepository = semesterRepository
@@ -37,6 +39,7 @@ struct HomeView: View {
         self.readingRepository = readingRepository
         self.resourceRepository = resourceRepository
         self.flashcardRepository = flashcardRepository
+        self.activeRecallRepository = activeRecallRepository
         _viewModel = State(wrappedValue: HomeViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -96,7 +99,8 @@ struct HomeView: View {
                     assignmentRepository: assignmentRepository,
                     readingRepository: readingRepository,
                     resourceRepository: resourceRepository,
-                    flashcardRepository: flashcardRepository
+                    flashcardRepository: flashcardRepository,
+                    activeRecallRepository: activeRecallRepository
                 )
             }
         }

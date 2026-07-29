@@ -7,6 +7,7 @@ struct CoursesView: View {
     let readingRepository: any ReadingRepositoryProtocol
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
+    let activeRecallRepository: any ActiveRecallRepositoryProtocol
 
     @State private var viewModel: CoursesViewModel
     @State private var activeSheet: CourseSheet?
@@ -26,7 +27,8 @@ struct CoursesView: View {
         assignmentRepository: any AssignmentRepositoryProtocol,
         readingRepository: any ReadingRepositoryProtocol,
         resourceRepository: any ResourceRepositoryProtocol,
-        flashcardRepository: any FlashcardRepositoryProtocol
+        flashcardRepository: any FlashcardRepositoryProtocol,
+        activeRecallRepository: any ActiveRecallRepositoryProtocol
     ) {
         self.courseRepository = courseRepository
         self.lectureRepository = lectureRepository
@@ -34,6 +36,7 @@ struct CoursesView: View {
         self.readingRepository = readingRepository
         self.resourceRepository = resourceRepository
         self.flashcardRepository = flashcardRepository
+        self.activeRecallRepository = activeRecallRepository
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -78,7 +81,11 @@ struct CoursesView: View {
             }
         )) {
             if let courseForLectures {
-                LectureListView(course: courseForLectures, lectureRepository: lectureRepository)
+                LectureListView(
+                    course: courseForLectures,
+                    lectureRepository: lectureRepository,
+                    activeRecallRepository: activeRecallRepository
+                )
             }
         }
         .navigationDestination(isPresented: Binding(

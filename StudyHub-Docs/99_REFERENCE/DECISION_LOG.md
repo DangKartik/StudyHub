@@ -2069,6 +2069,98 @@ No review mode, flip animation, spaced repetition, SM-2 algorithm, difficulty bu
 
 ---
 
+# DECISION-027
+
+## Decision
+
+Phase 3L (Active Recall Management) ships as a CRUD-only foundation: create, edit, delete, and view Active Recall questions, Lecture-owned only (no Course relationship added). `ActiveRecallQuestion` gains `createdAt`/`updatedAt`. `QuestionType` selection is included in V1. Hint/Explanation/Source/Tags and the full Review Mode / spaced repetition / AI generation system are explicitly deferred.
+
+---
+
+## Context
+
+The Phase 3L planning audit found `ActiveRecallQuestion` and `ActiveRecallRepository` fully built since Phase 2 with zero UI consumers. The model's only relationship is `lecture: Lecture?` (cascade-owned from `Lecture.activeRecallQuestions`, matching `05_DATA_RELATIONSHIPS.md §15` exactly) — there is no Course relationship, unlike `Flashcard`, which has both. The audit also found `ActiveRecallQuestion` missing both `createdAt` and `updatedAt` (the same gap class already closed for `Resource`, `GradeCategory`/`Quiz`/`Exam`, and `Flashcard`), and that `15_ACTIVE_RECALL.md` describes a full review system (Review Mode, Self-Evaluation, Spaced Recall Scheduling, Weak Knowledge Detection, AI Recall Generation, Study Session Integration) far beyond what the model or any other infrastructure currently supports.
+
+---
+
+## Options Considered
+
+### Add a Course relationship so Active Recall can nest under Course like every other feature
+
+Pros:
+
+```
+Matches the Course-nested navigation pattern used by Lectures, Assignments, Readings, Resources, Grades, and Flashcards
+```
+
+Cons:
+
+```
+Requires a new relationship not in the current model or 05_DATA_RELATIONSHIPS.md's documented shape ("Each Active Recall Question belongs to one Lecture")
+Would contradict the already-approved, documented ownership model for no real benefit — the question is conceptually tied to a specific lecture's content, not the course broadly
+```
+
+---
+
+### Keep Lecture-only ownership; nest navigation one level deeper (Course → Lecture → Active Recall)
+
+Pros:
+
+```
+Matches the model and 05_DATA_RELATIONSHIPS.md exactly — no relationship change needed
+Matches 15_ACTIVE_RECALL.md §4's own "Content-based" flow (Lecture → Generate Recall → Practice)
+Zero risk of a Core model relationship change beyond the already-approved timestamp fix
+```
+
+Cons:
+
+```
+First feature to nest under Lecture rather than Course directly — a new navigation shape, not a copy-paste of the CourseRowView button pattern
+```
+
+---
+
+### Ship CRUD plus a first pass at Review Mode together
+
+Pros:
+
+```
+One phase instead of two
+```
+
+Cons:
+
+```
+Review Mode (reveal-answer flow, self-evaluation, spaced scheduling) is a materially different, larger UI surface than any CRUD form built so far — the same reasoning already applied to Flashcard's review mode (DECISION-026) and Reading's Highlights (approved future requirement)
+Blocked on a real model gap: StudySession has no field referencing ActiveRecallQuestion at all (only an un-annotated flashcardsReviewed array), so Study Session Integration specifically cannot be built without further model work
+```
+
+---
+
+## Decision Reasoning
+
+This follows the same CRUD-foundation-first pattern applied to every feature phase in this project (Lecture, Assignment, Reading, Resource, Grade Tracker, Flashcard). Keeping Active Recall Lecture-only avoids inventing a relationship the documentation never specified, and matches the model exactly as built. Including `QuestionType` in V1 (rather than deferring it like Reading's Type field) is justified because the enum is fully defined, requires no model change, and is a required part of the question's identity per `15_ACTIVE_RECALL.md §9`'s example metadata — unlike Hint/Explanation/Source/Tags, which have no model fields at all and would require new Core model work to support.
+
+---
+
+## Impact
+
+```
+ActiveRecallQuestion.swift gains createdAt: Date = Date.now and updatedAt: Date = Date.now, both as stored properties and defaulted init parameters, matching every other model's convention
+
+ActiveRecallViewModel's update method sets updatedAt = Date.now before calling activeRecallRepository.save(), same pattern as every other ViewModel this phase
+
+Features/ActiveRecall/ActiveRecallFormView.swift exposes a Picker over all six QuestionType cases (Question Answer, Fill Blank, Definition, Diagram, Image, Essay); new questions default to .questionAnswer
+
+Navigation nests one level deeper than every prior phase: Course → Lectures → Lecture → Active Recall. LectureListView.swift gains a per-lecture entry point and its own navigation state — not a CourseRowView button
+
+Hint, Explanation, Source, and Tags are not added to the model and have no UI this phase
+
+Review Mode, answer-reveal flow, self-evaluation, spaced repetition, SM-2 scheduling, AI generation, statistics, practice tests, and Study Session integration are all explicitly deferred — each requires its own future scoping pass and DECISION-0NN before implementation
+```
+
+---
+
 # Decision Index
 
 ```
@@ -2200,6 +2292,11 @@ GradeCategory/Quiz/Exam Timestamps Added
 DECISION-026
 
 Flashcard Management V1 Scope
+
+
+DECISION-027
+
+Active Recall Management Foundation V1
 ```
 
 ---

@@ -10,6 +10,8 @@ final class ActiveRecallQuestion {
     var difficulty: Int = 0
     var lastReviewed: Date?
     var nextReviewDate: Date?
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     var lecture: Lecture?
 
@@ -20,7 +22,9 @@ final class ActiveRecallQuestion {
         questionType: QuestionType = .questionAnswer,
         difficulty: Int = 0,
         lastReviewed: Date? = nil,
-        nextReviewDate: Date? = nil
+        nextReviewDate: Date? = nil,
+        createdAt: Date = Date.now,
+        updatedAt: Date = Date.now
     ) {
         self.id = id
         self.question = question
@@ -29,5 +33,7 @@ final class ActiveRecallQuestion {
         self.difficulty = difficulty
         self.lastReviewed = lastReviewed
         self.nextReviewDate = nextReviewDate
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }
