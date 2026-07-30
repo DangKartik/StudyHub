@@ -11,7 +11,7 @@ struct SemesterFormView: View {
     @State private var endDate: Date = .now
     @State private var colorSelection: ColorSelection = .preset(SemesterFormView.colorPresets.first!.name)
     @State private var customColor: Color = .blue
-    @State private var showCustomColorGrid = false
+    @State private var isShowingCustomColorPicker = false
 
     private enum ColorSelection: Hashable {
         case preset(String)
@@ -88,8 +88,7 @@ struct SemesterFormView: View {
                                 .fill(customColor)
                                 .frame(width: 20, height: 20)
                         } else {
-                            Image(systemName: "paintpalette.fill")
-                                .foregroundStyle(.secondary)
+                            MulticolorSwatchIcon()
                                 .frame(width: 20, height: 20)
                         }
                         Text("Custom...")
@@ -102,7 +101,12 @@ struct SemesterFormView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         colorSelection = .custom
-                        showCustomColorGrid = true
+                        isShowingCustomColorPicker = true
+                    }
+                    .popover(isPresented: $isShowingCustomColorPicker) {
+                        CustomColorPickerPanel(selectedColor: $customColor)
+                            .padding()
+                            .frame(width: 220, height: 220)
                     }
                 }
             }
@@ -135,9 +139,6 @@ struct SemesterFormView: View {
                     }
                     .disabled(!canSave)
                 }
-            }
-            .sheet(isPresented: $showCustomColorGrid) {
-                CustomColorGridView(selectedColor: $customColor)
             }
             .onAppear {
                 if let semester {

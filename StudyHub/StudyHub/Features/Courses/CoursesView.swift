@@ -114,7 +114,7 @@ struct CoursesView: View {
             }
         )) {
             if let courseForReadings {
-                ReadingListView(course: courseForReadings, readingRepository: readingRepository)
+                ReadingListView(course: courseForReadings, readingRepository: readingRepository, pdfService: pdfService)
             }
         }
         .navigationDestination(isPresented: Binding(
