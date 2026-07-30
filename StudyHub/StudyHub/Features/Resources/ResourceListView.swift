@@ -76,6 +76,15 @@ struct ResourceListView: View {
                     title: resourceForPDFViewing.title,
                     sourceURL: resourceForPDFViewing.url,
                     summary: resourceNotes.isEmpty ? nil : resourceNotes,
+                    onSummaryEdit: { newNotes in
+                        viewModel.updateResource(
+                            resourceForPDFViewing,
+                            title: resourceForPDFViewing.title,
+                            type: resourceForPDFViewing.type,
+                            url: resourceForPDFViewing.url,
+                            notes: newNotes
+                        )
+                    },
                     pdfService: pdfService
                 )
             }

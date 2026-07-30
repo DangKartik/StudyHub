@@ -100,6 +100,11 @@ struct NoteFormView: View {
                     PDFViewerView(
                         attachment: attachmentForViewing,
                         summary: (noteBody?.isEmpty == false) ? noteBody : nil,
+                        onSummaryEdit: { newBody in
+                            if let note {
+                                viewModel.updateNote(note, title: note.title, body: newBody)
+                            }
+                        },
                         pdfService: pdfService
                     )
                 }

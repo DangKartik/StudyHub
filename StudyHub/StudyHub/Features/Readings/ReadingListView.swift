@@ -58,6 +58,18 @@ struct ReadingListView: View {
                 PDFViewerView(
                     attachment: attachment,
                     summary: readingNotes.isEmpty ? nil : readingNotes,
+                    onSummaryEdit: { newNotes in
+                        viewModel.updateReading(
+                            readingForPDFViewing,
+                            title: readingForPDFViewing.title,
+                            author: readingForPDFViewing.author,
+                            pageCount: readingForPDFViewing.pageCount,
+                            currentPage: readingForPDFViewing.currentPage,
+                            estimatedMinutes: readingForPDFViewing.estimatedMinutes,
+                            dueDate: readingForPDFViewing.dueDate,
+                            notes: newNotes
+                        )
+                    },
                     pdfService: pdfService
                 )
             }
