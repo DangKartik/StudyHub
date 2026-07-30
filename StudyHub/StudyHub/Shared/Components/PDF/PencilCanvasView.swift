@@ -1,49 +1,15 @@
 import PencilKit
 import SwiftUI
 
-/// Owns the live reference to the on-screen `PKCanvasView` so tool changes and
-/// undo/redo can be driven from SwiftUI state without SwiftUI re-creating the
-/// canvas itself. A plain, view-local UI controller — not a DI-registered
-/// service, since nothing outside this markup UI needs it (mirrors how
-/// `@State` would own a value type, adapted for a reference-type UIKit view).
-@MainActor
-@Observable
-final class PencilCanvasController {
-    private(set) weak var canvasView: PKCanvasView?
-    private(set) var canUndo = false
-    private(set) var canRedo = false
-
-    func attach(_ canvasView: PKCanvasView) {
-        self.canvasView = canvasView
-        refreshUndoState()
-    }
-
-    func undo() {
-        canvasView?.undoManager?.undo()
-        refreshUndoState()
-    }
-
-    func redo() {
-        canvasView?.undoManager?.redo()
-        refreshUndoState()
-    }
-
-    func refreshUndoState() {
-        canUndo = canvasView?.undoManager?.canUndo ?? false
-        canRedo = canvasView?.undoManager?.canRedo ?? false
-    }
-}
-
 /// Thin `UIViewRepresentable` wrapper around `PKCanvasView`, mirroring how
 /// `PDFKitRepresentedView` (in `PDFViewerView.swift`) wraps `PDFView` elsewhere
 /// in this app. `tool` is pushed onto the canvas on every update rather than
-/// mutated from within the controller, so SwiftUI state (`selectedTool` /
-/// `selectedColor` / `thickness` / `opacity` in `PDFViewerView`) stays the
-/// single source of truth. Drawings are not persisted anywhere — this is
-/// foundation-only (Phase 3N.6.1A); the drawing is discarded when the canvas
-/// is removed from the view tree.
+/// mutated from within the manager, so `PencilToolManager` (which owns tool
+/// selection, per-tool appearance, and undo/redo state) stays the single
+/// source of truth. Drawings are not persisted anywhere — the drawing is
+/// discarded when the canvas is removed from the view tree.
 struct PencilCanvasView: UIViewRepresentable {
-    let controller: PencilCanvasController
+    let controller: PencilToolManager
     let tool: PKTool
     let onStrokeBegan: () -> Void
 
@@ -51,12 +17,21 @@ struct PencilCanvasView: UIViewRepresentable {
         let canvasView = PKCanvasView()
         canvasView.backgroundColor = .clear
         canvasView.isOpaque = false
-        // Apple Pencil draws; finger touches never draw or scroll the canvas
-        // itself while Markup is active (see Phase 3N.6.1A input policy note
-        // in PDFViewerView.swift) — page-aware scroll-while-marking-up is
-        // deferred to the persistence phase.
-        canvasView.drawingPolicy = .pencilOnly
-        canvasView.isScrollEnabled = false
+        canvasView.isUserInteractionEnabled = true
+        // Confirmed root cause of the black/white ink swap: with the app in
+        // Dark Mode, PencilKit's own rendering adapts pure black/white ink
+        // to the canvas's current appearance (the exact "white draws black,
+        // black draws white" symptom) — no `UIColor`/`Color` conversion on
+        // our side can prevent that, since it happens inside PencilKit's
+        // rendering, not in the color value we hand it. Pinning the
+        // canvas's own trait environment to light removes dark mode as a
+        // variable for anything PencilKit does internally.
+        canvasView.overrideUserInterfaceStyle = .light
+        // PencilKit defaults are left untouched (no drawingPolicy,
+        // isScrollEnabled unchanged) — the confirmed-working minimal test
+        // used none of these restrictions; they'll be reintroduced only
+        // once all tools are verified working with them off. See Phase
+        // 3N.6.3B/C/E.
         canvasView.tool = tool
         canvasView.delegate = context.coordinator
         controller.attach(canvasView)
@@ -72,10 +47,10 @@ struct PencilCanvasView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, PKCanvasViewDelegate {
-        private let controller: PencilCanvasController
+        private let controller: PencilToolManager
         private let onStrokeBegan: () -> Void
 
-        init(controller: PencilCanvasController, onStrokeBegan: @escaping () -> Void) {
+        init(controller: PencilToolManager, onStrokeBegan: @escaping () -> Void) {
             self.controller = controller
             self.onStrokeBegan = onStrokeBegan
         }

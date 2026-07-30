@@ -16,36 +16,47 @@ struct PDFViewerView: View {
     let title: String
     let sourceURL: String
     let summary: String?
+    let onSummaryEdit: ((String) -> Void)?
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: PDFViewerViewModel
 
     @State private var isMarkupActive = false
     @State private var isShowingSummary = false
-    @State private var canvasController = PencilCanvasController()
-    @State private var selectedTool: PencilToolKind = .pencil
-    @State private var selectedColor: Color = .blue
-    @State private var thickness: CGFloat = 4
-    @State private var opacity: Double = 1.0
+    @State private var toolManager = PencilToolManager()
     @State private var isToolbarCollapsed = false
     @State private var settingsTool: PencilToolKind?
     @State private var isShowingColorPicker = false
     @State private var toolbarCollapseSide: ToolbarCollapseSide = .right
 
-    private var currentTool: PKTool {
-        selectedTool.makePKTool(color: selectedColor, thickness: thickness, opacity: opacity)
-    }
-
-    init(title: String, sourceURL: String, summary: String? = nil, pdfService: any PDFServiceProtocol) {
+    init(
+        title: String,
+        sourceURL: String,
+        summary: String? = nil,
+        onSummaryEdit: ((String) -> Void)? = nil,
+        pdfService: any PDFServiceProtocol
+    ) {
         self.title = title
         self.sourceURL = sourceURL
         self.summary = summary
+        self.onSummaryEdit = onSummaryEdit
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: PDFViewerViewModel(sourceURL: sourceURL, pdfService: pdfService))
     }
 
-    init(attachment: Attachment, summary: String? = nil, pdfService: any PDFServiceProtocol) {
-        self.init(title: attachment.filename, sourceURL: attachment.url, summary: summary, pdfService: pdfService)
+    init(
+        attachment: Attachment,
+        summary: String? = nil,
+        onSummaryEdit: ((String) -> Void)? = nil,
+        pdfService: any PDFServiceProtocol
+    ) {
+        self.init(
+            title: attachment.filename,
+            sourceURL: attachment.url,
+            summary: summary,
+            onSummaryEdit: onSummaryEdit,
+            pdfService: pdfService
+        )
     }
 
     var body: some View {
@@ -64,10 +75,13 @@ struct PDFViewerView: View {
         }
         .overlay {
             if isMarkupActive {
-                PencilCanvasView(controller: canvasController, tool: currentTool) {
+                PencilCanvasView(controller: toolManager, tool: toolManager.currentTool) {
                     settingsTool = nil
                     isShowingColorPicker = false
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .allowsHitTesting(true)
+                .zIndex(1)
             }
         }
         .overlay {
@@ -82,6 +96,7 @@ struct PDFViewerView: View {
                         settingsTool = nil
                         isShowingColorPicker = false
                     }
+                    .zIndex(1.5)
             }
         }
         .overlay(alignment: .top) {
@@ -91,16 +106,13 @@ struct PDFViewerView: View {
             // vertically near the top, for both states.
             if isMarkupActive {
                 PencilToolbar(
-                    selectedTool: $selectedTool,
-                    selectedColor: $selectedColor,
-                    thickness: $thickness,
-                    opacity: $opacity,
+                    toolManager: toolManager,
                     isCollapsed: $isToolbarCollapsed,
                     settingsTool: $settingsTool,
                     isShowingColorPicker: $isShowingColorPicker,
-                    collapseSide: $toolbarCollapseSide,
-                    controller: canvasController
+                    collapseSide: $toolbarCollapseSide
                 )
+                .zIndex(2)
             }
         }
         .navigationTitle(title)
@@ -125,33 +137,13 @@ struct PDFViewerView: View {
             }
         }
         .sheet(isPresented: $isShowingSummary) {
-            summarySheet
+            if let summary {
+                SummaryEditorView(summary: summary, onSave: onSummaryEdit)
+            }
         }
         .onAppear {
             if viewModel.document == nil && viewModel.loadError == nil {
                 viewModel.loadDocument()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var summarySheet: some View {
-        if let summary {
-            NavigationStack {
-                ScrollView {
-                    Text(summary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                }
-                .navigationTitle("Summary")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") {
-                            isShowingSummary = false
-                        }
-                    }
-                }
             }
         }
     }
