@@ -13,6 +13,8 @@ struct ResourceFormView: View {
     @State private var notes: String = ""
     @State private var isImportingFile = false
     @State private var importError: StudyHubError?
+    @State private var stagedTemporaryPath: String?
+    @State private var didSave = false
 
     private var isEditing: Bool {
         resource != nil
@@ -68,23 +70,7 @@ struct ResourceFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if let resource {
-                            viewModel.updateResource(
-                                resource,
-                                title: title,
-                                type: type,
-                                url: url,
-                                notes: notes
-                            )
-                        } else {
-                            viewModel.createResource(
-                                title: title,
-                                type: type,
-                                url: url,
-                                notes: notes
-                            )
-                        }
-                        dismiss()
+                        saveResource()
                     }
                     .disabled(!canSave)
                 }
@@ -93,7 +79,11 @@ struct ResourceFormView: View {
                 switch result {
                 case .success(let pickedURL):
                     do {
-                        let imported = try AttachmentFileImporter.importFile(from: pickedURL)
+                        let imported = try AttachmentFileImporter.importToTemporaryStorage(from: pickedURL)
+                        if let stagedTemporaryPath {
+                            AttachmentFileImporter.deleteTemporaryFile(at: stagedTemporaryPath)
+                        }
+                        stagedTemporaryPath = imported.path
                         url = imported.path
                     } catch let error as StudyHubError {
                         importError = error
@@ -125,6 +115,40 @@ struct ResourceFormView: View {
                     notes = resource.notes
                 }
             }
+            .onDisappear {
+                if !didSave, let stagedTemporaryPath {
+                    AttachmentFileImporter.deleteTemporaryFile(at: stagedTemporaryPath)
+                }
+            }
         }
+    }
+
+    /// A newly-imported PDF (`stagedTemporaryPath`) lives in temporary storage
+    /// until Save is actually pressed — only then is it finalized into
+    /// permanent attachment storage, matching the Notes staging pattern (see
+    /// Phase 3N.4 Part 3). If no new file was imported this session (editing
+    /// an existing PDF resource without replacing it, or a non-PDF type),
+    /// `url` already holds the correct, unchanged reference.
+    private func saveResource() {
+        var finalURL = url
+        if let stagedTemporaryPath {
+            do {
+                finalURL = try AttachmentFileImporter.finalize(temporaryPath: stagedTemporaryPath)
+            } catch let error as StudyHubError {
+                importError = error
+                return
+            } catch {
+                importError = AttachmentImportError.copyFailed
+                return
+            }
+        }
+
+        didSave = true
+        if let resource {
+            viewModel.updateResource(resource, title: title, type: type, url: finalURL, notes: notes)
+        } else {
+            viewModel.createResource(title: title, type: type, url: finalURL, notes: notes)
+        }
+        dismiss()
     }
 }

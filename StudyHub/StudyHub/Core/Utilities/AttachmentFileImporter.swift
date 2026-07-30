@@ -6,18 +6,11 @@ import Foundation
 /// or `URL.mailto(_:)` are. See DECISION-029: a dedicated FileService is deferred
 /// until multiple features actually need shared file-management logic.
 enum AttachmentFileImporter {
-    /// Copies a picked file straight into permanent attachment storage. Used by
-    /// Resource import, where there's no "pending, not yet saved" stage to
-    /// account for — a Resource's fields are only ever committed together on
-    /// its own Save.
-    static func importFile(from sourceURL: URL) throws -> (path: String, filename: String) {
-        try copyFile(from: sourceURL, into: attachmentsDirectory())
-    }
-
     /// Copies a picked file into temporary staging rather than permanent
-    /// storage — used while composing a new Note, before the user has
-    /// committed to saving it (see Phase 3N.4 Part 3). Call `finalize` when the
-    /// owning Note is actually saved, or `deleteTemporaryFile` if it's discarded.
+    /// storage — used while composing a new Note or Resource, before the user
+    /// has committed to saving it (see Phase 3N.4 Part 3, Phase 3N.5.1). Call
+    /// `finalize` when the owning object is actually saved, or
+    /// `deleteTemporaryFile` if it's discarded.
     static func importToTemporaryStorage(from sourceURL: URL) throws -> (path: String, filename: String) {
         try copyFile(from: sourceURL, into: temporaryStagingDirectory())
     }
