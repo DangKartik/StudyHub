@@ -8,6 +8,7 @@ struct NotesListView: View {
     @State private var filter: NoteFilter = .all
     @State private var sortOrder: NoteSortOrder = .newestCreated
     @State private var attachmentForViewing: Attachment?
+    @State private var noteForPDFViewing: Note?
     @Environment(\.openURL) private var openURL
 
     init(course: Course, noteRepository: any NoteRepositoryProtocol, pdfService: any PDFServiceProtocol) {
@@ -89,7 +90,12 @@ struct NotesListView: View {
             }
         )) {
             if let attachmentForViewing {
-                PDFViewerView(attachment: attachmentForViewing, pdfService: pdfService)
+                let noteBody = noteForPDFViewing?.body.trimmingCharacters(in: .whitespacesAndNewlines)
+                PDFViewerView(
+                    attachment: attachmentForViewing,
+                    summary: (noteBody?.isEmpty == false) ? noteBody : nil,
+                    pdfService: pdfService
+                )
             }
         }
         .onAppear {
@@ -139,6 +145,7 @@ struct NotesListView: View {
 
         switch AttachmentKind(rawValue: attachment.type) {
         case .pdf:
+            noteForPDFViewing = note
             attachmentForViewing = attachment
         case .link, .goodnotes:
             if let url = URL(string: attachment.url) {

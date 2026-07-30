@@ -15,7 +15,7 @@ struct CourseFormView: View {
     @State private var credits: Int = 0
     @State private var colorSelection: ColorSelection = .preset("blue")
     @State private var customColor: Color = .blue
-    @State private var showCustomColorGrid = false
+    @State private var isShowingCustomColorPicker = false
     @State private var selectedSemester: Semester?
 
     private enum ColorSelection: Hashable {
@@ -129,8 +129,7 @@ struct CourseFormView: View {
                                 .fill(customColor)
                                 .frame(width: 20, height: 20)
                         } else {
-                            Image(systemName: "paintpalette.fill")
-                                .foregroundStyle(.secondary)
+                            MulticolorSwatchIcon()
                                 .frame(width: 20, height: 20)
                         }
                         Text("Custom...")
@@ -143,7 +142,12 @@ struct CourseFormView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         colorSelection = .custom
-                        showCustomColorGrid = true
+                        isShowingCustomColorPicker = true
+                    }
+                    .popover(isPresented: $isShowingCustomColorPicker) {
+                        CustomColorPickerPanel(selectedColor: $customColor)
+                            .padding()
+                            .frame(width: 220, height: 220)
                     }
                 }
             }
@@ -186,9 +190,6 @@ struct CourseFormView: View {
                     }
                     .disabled(!canSave)
                 }
-            }
-            .sheet(isPresented: $showCustomColorGrid) {
-                CustomColorGridView(selectedColor: $customColor)
             }
             .onAppear {
                 if let course {

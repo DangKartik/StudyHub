@@ -71,9 +71,11 @@ struct ResourceListView: View {
             }
         )) {
             if let resourceForPDFViewing {
+                let resourceNotes = resourceForPDFViewing.notes.trimmingCharacters(in: .whitespacesAndNewlines)
                 PDFViewerView(
                     title: resourceForPDFViewing.title,
                     sourceURL: resourceForPDFViewing.url,
+                    summary: resourceNotes.isEmpty ? nil : resourceNotes,
                     pdfService: pdfService
                 )
             }

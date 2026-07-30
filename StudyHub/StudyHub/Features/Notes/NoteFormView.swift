@@ -96,7 +96,12 @@ struct NoteFormView: View {
                 }
             )) {
                 if let attachmentForViewing {
-                    PDFViewerView(attachment: attachmentForViewing, pdfService: pdfService)
+                    let noteBody = note?.body.trimmingCharacters(in: .whitespacesAndNewlines)
+                    PDFViewerView(
+                        attachment: attachmentForViewing,
+                        summary: (noteBody?.isEmpty == false) ? noteBody : nil,
+                        pdfService: pdfService
+                    )
                 }
             }
             .alert(

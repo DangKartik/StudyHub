@@ -25,6 +25,12 @@ final class ReadingViewModel {
         }
     }
 
+    /// `attachments` are staged, not-yet-inserted `Attachment` objects built
+    /// while composing the Reading (mirrors `NotesViewModel.createNote`). A
+    /// staged `.pdf` attachment's `url` holds a *temporary* path — it's
+    /// finalized into permanent storage here, only once the Reading is
+    /// actually being saved, before being linked via the same
+    /// `createAttachment(_:for:)` path `addAttachment` uses.
     func createReading(
         title: String,
         author: String,
@@ -32,7 +38,8 @@ final class ReadingViewModel {
         currentPage: Int,
         estimatedMinutes: Int,
         dueDate: Date?,
-        notes: String
+        notes: String,
+        attachments: [Attachment] = []
     ) {
         let reading = Reading(
             title: title,
@@ -47,6 +54,12 @@ final class ReadingViewModel {
 
         do {
             try readingRepository.create(reading)
+            for attachment in attachments {
+                if attachment.type == AttachmentKind.pdf.rawValue {
+                    attachment.url = try AttachmentFileImporter.finalize(temporaryPath: attachment.url)
+                }
+                try readingRepository.createAttachment(attachment, for: reading)
+            }
             loadReadings()
         } catch let error as StudyHubError {
             loadError = error
@@ -86,6 +99,30 @@ final class ReadingViewModel {
     func deleteReading(_ reading: Reading) {
         do {
             try readingRepository.delete(reading)
+            loadReadings()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.deleteFailed(underlying: error)
+        }
+    }
+
+    func addAttachment(to reading: Reading, filename: String, type: String, url: String) {
+        let attachment = Attachment(filename: filename, type: type, url: url)
+
+        do {
+            try readingRepository.createAttachment(attachment, for: reading)
+            loadReadings()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
+
+    func deleteAttachment(_ attachment: Attachment) {
+        do {
+            try readingRepository.deleteAttachment(attachment)
             loadReadings()
         } catch let error as StudyHubError {
             loadError = error
