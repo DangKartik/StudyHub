@@ -20,6 +20,7 @@ final class AppContainer {
     let statisticsRepository: any StatisticsRepositoryProtocol
     let quoteRepository: any QuoteRepositoryProtocol
     let calendarRepository: any CalendarRepositoryProtocol
+    let pdfService: any PDFServiceProtocol
 
     private let appLifecycleService: any AppLifecycleServicing
 
@@ -44,6 +45,7 @@ final class AppContainer {
         statisticsRepository = StatisticsRepository(modelContext: context)
         quoteRepository = QuoteRepository(modelContext: context)
         calendarRepository = CalendarRepository(modelContext: context)
+        pdfService = PDFService()
 
         appLifecycleService = AppLifecycleService(appState: appState, modelContainer: modelContainer)
 

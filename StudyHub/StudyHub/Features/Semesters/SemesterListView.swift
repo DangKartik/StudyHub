@@ -58,9 +58,11 @@ struct SemesterListView: View {
             if let active = viewModel.activeSemester {
                 Section("Active Semester") {
                     SemesterRowView(semester: active, isActive: true)
+                        .contentShape(Rectangle())
                         .onTapGesture {
                             activeSheet = .edit(active)
                         }
+                        .accessibilityAddTraits(.isButton)
                         .swipeActions(edge: .trailing) {
                             Button("Archive", systemImage: "archivebox") {
                                 withAnimation {
@@ -84,9 +86,11 @@ struct SemesterListView: View {
                                 }
                             }
                         )
+                        .contentShape(Rectangle())
                         .onTapGesture {
                             activeSheet = .edit(semester)
                         }
+                        .accessibilityAddTraits(.isButton)
                         .swipeActions(edge: .trailing) {
                             Button("Archive", systemImage: "archivebox") {
                                 withAnimation {
@@ -110,6 +114,11 @@ struct SemesterListView: View {
                 Section("Archived") {
                     ForEach(viewModel.archivedSemesters, id: \.id) { semester in
                         SemesterRowView(semester: semester, isActive: false, isArchived: true)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                activeSheet = .edit(semester)
+                            }
+                            .accessibilityAddTraits(.isButton)
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
                                     withAnimation {

@@ -57,9 +57,11 @@ struct FlashcardListView: View {
 
             ForEach(viewModel.flashcards, id: \.id) { flashcard in
                 FlashcardRowView(flashcard: flashcard)
+                    .contentShape(Rectangle())
                     .onTapGesture {
                         activeSheet = .edit(flashcard)
                     }
+                    .accessibilityAddTraits(.isButton)
                     .swipeActions(edge: .trailing) {
                         Button("Delete", systemImage: "trash", role: .destructive) {
                             viewModel.deleteFlashcard(flashcard)

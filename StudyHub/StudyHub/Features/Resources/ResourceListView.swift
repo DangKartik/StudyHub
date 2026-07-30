@@ -1,11 +1,16 @@
 import SwiftUI
 
 struct ResourceListView: View {
+    let pdfService: any PDFServiceProtocol
+
     @State private var viewModel: ResourceViewModel
     @State private var activeSheet: ResourceSheet?
     @State private var resourcePendingDelete: Resource?
+    @State private var resourceForPDFViewing: Resource?
+    @Environment(\.openURL) private var openURL
 
-    init(course: Course, resourceRepository: any ResourceRepositoryProtocol) {
+    init(course: Course, resourceRepository: any ResourceRepositoryProtocol, pdfService: any PDFServiceProtocol) {
+        self.pdfService = pdfService
         _viewModel = State(wrappedValue: ResourceViewModel(
             course: course,
             resourceRepository: resourceRepository
@@ -59,6 +64,20 @@ struct ResourceListView: View {
         } message: { resource in
             Text("\"\(resource.title)\" will be permanently deleted.")
         }
+        .navigationDestination(isPresented: Binding(
+            get: { resourceForPDFViewing != nil },
+            set: { isPresented in
+                if !isPresented { resourceForPDFViewing = nil }
+            }
+        )) {
+            if let resourceForPDFViewing {
+                PDFViewerView(
+                    title: resourceForPDFViewing.title,
+                    sourceURL: resourceForPDFViewing.url,
+                    pdfService: pdfService
+                )
+            }
+        }
         .onAppear {
             viewModel.loadResources()
         }
@@ -75,17 +94,42 @@ struct ResourceListView: View {
 
             ForEach(viewModel.resources, id: \.id) { resource in
                 ResourceRowView(resource: resource)
+                    .contentShape(Rectangle())
                     .onTapGesture {
-                        activeSheet = .edit(resource)
+                        handleTap(on: resource)
                     }
+                    .accessibilityAddTraits(.isButton)
                     .swipeActions(edge: .trailing) {
                         Button("Delete", systemImage: "trash", role: .destructive) {
                             resourcePendingDelete = resource
                         }
+                        Button("Edit", systemImage: "pencil") {
+                            activeSheet = .edit(resource)
+                        }
+                        .tint(.blue)
                     }
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    /// Primary row action: PDFs open in the PDF viewer; every other type with a
+    /// non-empty URL opens via `openURL`. Resources with nothing to open (empty
+    /// URL) fall back to Edit, since there's no destination to open. Editing is
+    /// always still reachable via the "Edit" swipe action.
+    private func handleTap(on resource: Resource) {
+        guard !resource.url.isEmpty else {
+            activeSheet = .edit(resource)
+            return
+        }
+
+        if resource.type == .pdf {
+            resourceForPDFViewing = resource
+        } else if let url = URL(string: resource.url) {
+            openURL(url)
+        } else {
+            activeSheet = .edit(resource)
+        }
     }
 }
 

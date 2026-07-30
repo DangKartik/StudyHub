@@ -2263,6 +2263,165 @@ Reading, Assignment, and Resource relationships on Note, a global Notes library,
 
 ---
 
+# DECISION-029
+
+## Decision
+
+A dedicated FileService is deferred. Phase 3N.1.1's PDF import workflow uses a minimal, non-DI utility (`Core/Utilities/AttachmentFileImporter`) instead — a plain namespace with one static function, no protocol, no AppContainer registration. This also supersedes part of DECISION-028's stated V1 scope: DECISION-028 said Attachments "store external references only, never imported file bytes" and that there was "no file-import mechanism" — Phase 3N.1.1 deliberately introduces real file copying into app-owned storage for `.pdf`-typed Attachments and Resources, superseding that specific clause.
+
+---
+
+## Context
+
+3N.1.1 needed to replace manually-typed file paths with a native `.fileImporter` for PDF attachments and PDF resources. `Attachment.url`/`Resource.url` were already free-typed strings with no validation, matching DECISION-028's "external references only" design — but that design assumed no file-import mechanism would exist. Introducing `.fileImporter` requires copying the picked file into app-owned storage, since a security-scoped picker URL isn't safely reusable as a stored path across launches without bookmark management. A full FileService (protocol, DI registration, mock implementation, AppContainer wiring) was considered for this and explicitly ruled premature — only one feature currently needs file-copy behavior.
+
+---
+
+## Options Considered
+
+### Introduce a full FileService now
+
+Pros:
+
+```
+Matches the Service-layer pattern used by every other external-system integration in this app
+
+Positions the app for future file-management needs (image import, document management, export/import, backup) without a later migration
+```
+
+Cons:
+
+```
+Protocol, DI registration, AppContainer wiring, and a mock implementation for a single call site is unjustified complexity relative to the actual need
+
+No second feature exists yet to prove the abstraction boundary is even correct — building it now risks guessing wrong
+```
+
+---
+
+### Minimal non-DI utility in Core/Utilities, defer FileService
+
+Pros:
+
+```
+Satisfies the immediate requirement (copy a picked file into app storage, return a stable path) with the smallest possible footprint
+
+Matches this project's own repeated reasoning for avoiding premature abstraction (e.g. DECISION-019's rejection of a Professor model for two text fields)
+
+Core/Utilities is already a documented, reserved location for exactly this kind of helper, unused until this phase
+```
+
+Cons:
+
+```
+If multiple features need file-copy behavior later, this utility will need to be replaced by a real Service — a known, accepted future migration, not a surprise
+```
+
+---
+
+## Decision Reasoning
+
+Introducing Service-layer ceremony for a single call site is unjustified complexity relative to the actual need. A plain utility satisfies the requirement with the smallest footprint, consistent with how this project has repeatedly chosen minimal, additive solutions over speculative infrastructure.
+
+---
+
+## Impact
+
+```
+Future phases will likely need a dedicated FileService once multiple features require shared file-management logic — e.g. image imports, broader document management, export/import, backup handling, or general file lifecycle management
+
+When that need becomes real (not hypothetical), a FileService should be introduced following the same protocol + DI pattern already used by every other Service in this app
+
+Until then, AttachmentFileImporter remains the single, minimal, non-DI file-copy utility
+
+DECISION-028's "no file-import mechanism" clause is understood as superseded for .pdf-typed Attachments/Resources specifically — every other Attachment/Resource kind (Link, GoodNotes, Website, Video, Repository, Book, Document, Image, Other) still stores external references only, exactly as DECISION-028 described
+```
+
+---
+
+# DECISION-030
+
+## Decision
+
+When creating a note from a Course Notes page, users may optionally associate the note with a specific Lecture instead of the Course directly. If no Lecture is selected, the note remains a Course-level note (`note.course` set, matching existing behavior). If a Lecture is selected, the note is created as a Lecture-level note (`note.lecture` set) instead. Lecture Notes pages are unaffected — notes created there continue to belong exclusively to that Lecture, with no Course option.
+
+---
+
+## Context
+
+Course Notes creation (`NotesViewModel.createNote`, scoped via `NotesViewModel.Scope.course`) currently always sets `note.course`, with no way to target a specific Lecture at creation time — a user wanting a Lecture-scoped note has to navigate into that Lecture's own Notes screen first. Since Phase 3N.1.1, Course Notes aggregation (`NoteRepository.fetch(forCourseIncludingLectures:)`) already surfaces Lecture-owned notes alongside Course-owned ones, so a Lecture-owned note created this way is already visible from the Course Notes screen without any further change — this decision only concerns *where a new note's ownership is set at creation time*, not visibility.
+
+---
+
+## Options Considered
+
+### Require navigating into a Lecture's own Notes screen to create a Lecture-scoped note (status quo)
+
+Pros:
+
+```
+No change required
+Keeps Course Notes creation simple and single-purpose
+```
+
+Cons:
+
+```
+Extra navigation friction for a common case — students frequently want to record a note "for Lecture 5" while already browsing the Course's Notes
+
+Course Notes aggregation already made Lecture notes visible from this screen, but not creatable from it — an inconsistent affordance
+```
+
+---
+
+### Add an optional Lecture picker to Course Notes creation, mirroring the existing Flashcards pattern
+
+Pros:
+
+```
+Directly matches an already-shipped, proven pattern — FlashcardsViewModel.availableLectures + FlashcardFormView's Picker("Lecture", selection:) — no new interaction pattern introduced
+
+Removes the navigation friction described above
+
+No SwiftData model change — Note.course and Note.lecture already both exist as independent optionals
+
+No repository change — NoteRepository.create(_:) already inserts whatever relationship is set, and fetch(forCourseIncludingLectures:) already surfaces the result correctly
+```
+
+Cons:
+
+```
+None identified — small, additive View/ViewModel change with an existing precedent to follow
+```
+
+---
+
+## Decision Reasoning
+
+The second option directly reuses an already-approved, already-shipped interaction pattern (Flashcards' optional Lecture picker) rather than inventing a new one, and closes a real, identified inconsistency: Course Notes aggregation (Phase 3N.1.1) already displays Lecture notes but offered no way to create one from that screen. Since both relationships already exist on `Note` and neither the repository nor the aggregation logic needs to change, this is a pure View/ViewModel-layer decision with no architectural cost.
+
+---
+
+## Impact
+
+```
+No SwiftData model changes — Note.course and Note.lecture already exist as independent optionals
+
+No repository changes — NoteRepository.create(_:) and fetch(forCourseIncludingLectures:) both already support this without modification
+
+NotesViewModel.createNote gains an optional lecture parameter; when scope is .course and a lecture is provided, note.lecture is set instead of note.course
+
+NotesViewModel gains an availableLectures computed property, mirroring FlashcardsViewModel.availableLectures exactly
+
+NoteFormView's creation form gains a Lecture picker, shown only when creating from Course scope, defaulting to "None" (Course-level)
+
+Lecture Notes pages (NotesViewModel.Scope.lecture) are unaffected — notes created there continue to set note.lecture only, with no Course option
+
+Course Notes aggregation (fetch(forCourseIncludingLectures:)) requires no change — it already surfaces Lecture-owned notes regardless of how they were created
+```
+
+---
+
 # Decision Index
 
 ```
@@ -2404,6 +2563,16 @@ Active Recall Management Foundation V1
 DECISION-028
 
 Notes Management V1 Scope — First-Class Model with Required Attachments
+
+
+DECISION-029
+
+FileService Deferral — AttachmentFileImporter Utility
+
+
+DECISION-030
+
+Course Notes Lecture Association
 ```
 
 ---
