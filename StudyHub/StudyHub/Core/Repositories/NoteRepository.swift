@@ -11,6 +11,7 @@ protocol NoteRepositoryProtocol {
     func count() throws -> Int
 
     func fetch(forCourse course: Course) throws -> [Note]
+    func fetch(forCourseIncludingLectures course: Course) throws -> [Note]
     func fetch(forLecture lecture: Lecture) throws -> [Note]
 
     func createAttachment(_ attachment: Attachment, for note: Note) throws
@@ -61,6 +62,18 @@ final class NoteRepository: NoteRepositoryProtocol {
 
     func fetch(forCourse course: Course) throws -> [Note] {
         course.noteEntries.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    /// Aggregates notes attached directly to the Course with notes attached to any
+    /// of its Lectures. Both sets are structurally exclusive (a Note is ever only
+    /// `note.course` or `note.lecture`, never both — see `NotesViewModel.createNote`),
+    /// so this concatenation cannot duplicate a Note. Walks the relationship graph
+    /// directly rather than a `#Predicate` across `note.lecture?.course`, matching
+    /// every other fetch method in this repository.
+    func fetch(forCourseIncludingLectures course: Course) throws -> [Note] {
+        let courseNotes = course.noteEntries
+        let lectureNotes = course.lectures.flatMap { $0.noteEntries }
+        return (courseNotes + lectureNotes).sorted { $0.createdAt < $1.createdAt }
     }
 
     func fetch(forLecture lecture: Lecture) throws -> [Note] {

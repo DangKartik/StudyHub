@@ -3,6 +3,7 @@ import SwiftUI
 struct LectureListView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
+    let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: LectureViewModel
     @State private var activeSheet: LectureSheet?
@@ -13,10 +14,12 @@ struct LectureListView: View {
         course: Course,
         lectureRepository: any LectureRepositoryProtocol,
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
-        noteRepository: any NoteRepositoryProtocol
+        noteRepository: any NoteRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
     ) {
         self.activeRecallRepository = activeRecallRepository
         self.noteRepository = noteRepository
+        self.pdfService = pdfService
         _viewModel = State(wrappedValue: LectureViewModel(
             course: course,
             lectureRepository: lectureRepository
@@ -70,7 +73,7 @@ struct LectureListView: View {
             }
         )) {
             if let lectureForNotes {
-                NotesListView(lecture: lectureForNotes, noteRepository: noteRepository)
+                NotesListView(lecture: lectureForNotes, noteRepository: noteRepository, pdfService: pdfService)
             }
         }
         .onAppear {
@@ -93,9 +96,11 @@ struct LectureListView: View {
                     onViewActiveRecall: { lectureForActiveRecall = lecture },
                     onViewNotes: { lectureForNotes = lecture }
                 )
+                .contentShape(Rectangle())
                 .onTapGesture {
                     activeSheet = .edit(lecture)
                 }
+                .accessibilityAddTraits(.isButton)
                 .swipeActions(edge: .trailing) {
                     Button("Delete", systemImage: "trash", role: .destructive) {
                         viewModel.deleteLecture(lecture)

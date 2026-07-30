@@ -88,9 +88,11 @@ struct GradesListView: View {
                 Section("Grade Categories") {
                     ForEach(viewModel.gradeCategories, id: \.id) { category in
                         GradeCategoryRowView(category: category)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 activeSheet = .editCategory(category)
                             }
+                            .accessibilityAddTraits(.isButton)
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
                                     viewModel.deleteGradeCategory(category)
@@ -104,9 +106,11 @@ struct GradesListView: View {
                 Section("Quizzes") {
                     ForEach(viewModel.quizzes, id: \.id) { quiz in
                         QuizRowView(quiz: quiz)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 activeSheet = .editQuiz(quiz)
                             }
+                            .accessibilityAddTraits(.isButton)
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
                                     viewModel.deleteQuiz(quiz)
@@ -120,9 +124,11 @@ struct GradesListView: View {
                 Section("Exams") {
                     ForEach(viewModel.exams, id: \.id) { exam in
                         ExamRowView(exam: exam)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 activeSheet = .editExam(exam)
                             }
+                            .accessibilityAddTraits(.isButton)
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
                                     viewModel.deleteExam(exam)

@@ -9,6 +9,7 @@ struct CoursesView: View {
     let flashcardRepository: any FlashcardRepositoryProtocol
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
+    let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: CoursesViewModel
     @State private var activeSheet: CourseSheet?
@@ -31,7 +32,8 @@ struct CoursesView: View {
         resourceRepository: any ResourceRepositoryProtocol,
         flashcardRepository: any FlashcardRepositoryProtocol,
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
-        noteRepository: any NoteRepositoryProtocol
+        noteRepository: any NoteRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
     ) {
         self.courseRepository = courseRepository
         self.lectureRepository = lectureRepository
@@ -41,6 +43,7 @@ struct CoursesView: View {
         self.flashcardRepository = flashcardRepository
         self.activeRecallRepository = activeRecallRepository
         self.noteRepository = noteRepository
+        self.pdfService = pdfService
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -89,7 +92,8 @@ struct CoursesView: View {
                     course: courseForLectures,
                     lectureRepository: lectureRepository,
                     activeRecallRepository: activeRecallRepository,
-                    noteRepository: noteRepository
+                    noteRepository: noteRepository,
+                    pdfService: pdfService
                 )
             }
         }
@@ -120,7 +124,11 @@ struct CoursesView: View {
             }
         )) {
             if let courseForResources {
-                ResourceListView(course: courseForResources, resourceRepository: resourceRepository)
+                ResourceListView(
+                    course: courseForResources,
+                    resourceRepository: resourceRepository,
+                    pdfService: pdfService
+                )
             }
         }
         .navigationDestination(isPresented: Binding(
@@ -150,7 +158,7 @@ struct CoursesView: View {
             }
         )) {
             if let courseForNotes {
-                NotesListView(course: courseForNotes, noteRepository: noteRepository)
+                NotesListView(course: courseForNotes, noteRepository: noteRepository, pdfService: pdfService)
             }
         }
         .onAppear {
@@ -197,6 +205,11 @@ struct CoursesView: View {
                             onViewFlashcards: { courseForFlashcards = course },
                             onViewNotes: { courseForNotes = course }
                         )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            activeSheet = .edit(course)
+                        }
+                        .accessibilityAddTraits(.isButton)
                         .swipeActions(edge: .trailing) {
                             Button("Delete", systemImage: "trash", role: .destructive) {
                                 withAnimation {
@@ -230,9 +243,11 @@ struct CoursesView: View {
             onViewFlashcards: { courseForFlashcards = course },
             onViewNotes: { courseForNotes = course }
         )
+        .contentShape(Rectangle())
         .onTapGesture {
             activeSheet = .edit(course)
         }
+        .accessibilityAddTraits(.isButton)
         .swipeActions(edge: .trailing) {
             Button("Archive", systemImage: "archivebox") {
                 withAnimation {

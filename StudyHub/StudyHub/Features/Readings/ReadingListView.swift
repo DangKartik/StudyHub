@@ -57,9 +57,11 @@ struct ReadingListView: View {
 
             ForEach(viewModel.readings, id: \.id) { reading in
                 ReadingRowView(reading: reading)
+                    .contentShape(Rectangle())
                     .onTapGesture {
                         activeSheet = .edit(reading)
                     }
+                    .accessibilityAddTraits(.isButton)
                     .swipeActions(edge: .trailing) {
                         Button("Delete", systemImage: "trash", role: .destructive) {
                             viewModel.deleteReading(reading)

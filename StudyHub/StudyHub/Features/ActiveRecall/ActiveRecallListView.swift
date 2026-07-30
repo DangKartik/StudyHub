@@ -57,9 +57,11 @@ struct ActiveRecallListView: View {
 
             ForEach(viewModel.questions, id: \.id) { recallQuestion in
                 ActiveRecallRowView(recallQuestion: recallQuestion)
+                    .contentShape(Rectangle())
                     .onTapGesture {
                         activeSheet = .edit(recallQuestion)
                     }
+                    .accessibilityAddTraits(.isButton)
                     .swipeActions(edge: .trailing) {
                         Button("Delete", systemImage: "trash", role: .destructive) {
                             viewModel.deleteQuestion(recallQuestion)

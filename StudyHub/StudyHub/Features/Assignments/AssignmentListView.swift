@@ -59,9 +59,11 @@ struct AssignmentListView: View {
                 Section("Active Assignments") {
                     ForEach(viewModel.activeAssignments, id: \.id) { assignment in
                         AssignmentRowView(assignment: assignment)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 activeSheet = .edit(assignment)
                             }
+                            .accessibilityAddTraits(.isButton)
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
                                     viewModel.deleteAssignment(assignment)
@@ -82,9 +84,11 @@ struct AssignmentListView: View {
                 Section("Completed Assignments") {
                     ForEach(viewModel.completedAssignments, id: \.id) { assignment in
                         AssignmentRowView(assignment: assignment)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 activeSheet = .edit(assignment)
                             }
+                            .accessibilityAddTraits(.isButton)
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
                                     viewModel.deleteAssignment(assignment)
