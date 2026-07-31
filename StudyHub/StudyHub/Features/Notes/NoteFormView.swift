@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct NoteFormView: View {
     let viewModel: NotesViewModel
     let note: Note?
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @Environment(\.dismiss) private var dismiss
@@ -108,6 +109,7 @@ struct NoteFormView: View {
                         onMarkupSave: { data in
                             viewModel.saveMarkup(data, for: attachmentForViewing)
                         },
+                        bookmarkRepository: bookmarkRepository,
                         pdfService: pdfService
                     )
                 }

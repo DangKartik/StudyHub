@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ResourceListView: View {
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: ResourceViewModel
@@ -9,7 +10,13 @@ struct ResourceListView: View {
     @State private var resourceForPDFViewing: Resource?
     @Environment(\.openURL) private var openURL
 
-    init(course: Course, resourceRepository: any ResourceRepositoryProtocol, pdfService: any PDFServiceProtocol) {
+    init(
+        course: Course,
+        resourceRepository: any ResourceRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
+    ) {
+        self.bookmarkRepository = bookmarkRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: ResourceViewModel(
             course: course,
@@ -89,6 +96,7 @@ struct ResourceListView: View {
                     onMarkupSave: { data in
                         viewModel.saveMarkup(data, for: resourceForPDFViewing)
                     },
+                    bookmarkRepository: bookmarkRepository,
                     pdfService: pdfService
                 )
             }

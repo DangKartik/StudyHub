@@ -13,6 +13,7 @@ struct AppShellView: View {
     let flashcardRepository: any FlashcardRepositoryProtocol
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     var body: some View {
@@ -32,6 +33,7 @@ struct AppShellView: View {
                 flashcardRepository: flashcardRepository,
                 activeRecallRepository: activeRecallRepository,
                 noteRepository: noteRepository,
+                bookmarkRepository: bookmarkRepository,
                 pdfService: pdfService
             )
         }

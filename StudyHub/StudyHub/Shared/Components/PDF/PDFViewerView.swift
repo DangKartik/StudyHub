@@ -22,6 +22,7 @@ struct PDFViewerView: View {
     let onSummaryEdit: ((String) -> Void)?
     let initialMarkupData: Data?
     let onMarkupSave: ((Data) -> Void)?
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: PDFViewerViewModel
@@ -34,6 +35,10 @@ struct PDFViewerView: View {
     @State private var isShowingColorPicker = false
     @State private var toolbarCollapseSide: ToolbarCollapseSide = .right
     @State private var markupCoordinator = PDFMarkupCoordinator()
+    @State private var navigationCoordinator = PDFNavigationCoordinator()
+    @State private var isFindActive = false
+    @State private var findQuery = ""
+    @State private var isShowingBookmarks = false
 
     init(
         title: String,
@@ -42,6 +47,7 @@ struct PDFViewerView: View {
         onSummaryEdit: ((String) -> Void)? = nil,
         initialMarkupData: Data? = nil,
         onMarkupSave: ((Data) -> Void)? = nil,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.title = title
@@ -50,8 +56,13 @@ struct PDFViewerView: View {
         self.onSummaryEdit = onSummaryEdit
         self.initialMarkupData = initialMarkupData
         self.onMarkupSave = onMarkupSave
+        self.bookmarkRepository = bookmarkRepository
         self.pdfService = pdfService
-        _viewModel = State(wrappedValue: PDFViewerViewModel(sourceURL: sourceURL, pdfService: pdfService))
+        _viewModel = State(wrappedValue: PDFViewerViewModel(
+            sourceURL: sourceURL,
+            pdfService: pdfService,
+            bookmarkRepository: bookmarkRepository
+        ))
     }
 
     init(
@@ -59,6 +70,7 @@ struct PDFViewerView: View {
         summary: String? = nil,
         onSummaryEdit: ((String) -> Void)? = nil,
         onMarkupSave: ((Data) -> Void)? = nil,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.init(
@@ -68,6 +80,7 @@ struct PDFViewerView: View {
             onSummaryEdit: onSummaryEdit,
             initialMarkupData: attachment.markupData,
             onMarkupSave: onMarkupSave,
+            bookmarkRepository: bookmarkRepository,
             pdfService: pdfService
         )
     }
@@ -78,6 +91,7 @@ struct PDFViewerView: View {
                 PDFKitRepresentedView(
                     document: document,
                     markupCoordinator: markupCoordinator,
+                    navigationCoordinator: navigationCoordinator,
                     toolManager: toolManager,
                     isMarkupActive: isMarkupActive
                 )
@@ -122,6 +136,20 @@ struct PDFViewerView: View {
                 .zIndex(2)
             }
         }
+        .overlay(alignment: .top) {
+            if isFindActive {
+                PDFFindBar(
+                    query: $findQuery,
+                    matchCountText: findMatchCountText,
+                    hasMatches: !viewModel.searchMatches.isEmpty,
+                    onSearch: { viewModel.search(for: findQuery) },
+                    onNext: { viewModel.goToNextMatch() },
+                    onPrevious: { viewModel.goToPreviousMatch() },
+                    onClose: { isFindActive = false }
+                )
+                .zIndex(2)
+            }
+        }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -137,6 +165,25 @@ struct PDFViewerView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
+                    isFindActive.toggle()
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+                .accessibilityLabel("Find in PDF")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                bookmarkToggleButton
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isShowingBookmarks = true
+                } label: {
+                    Image(systemName: "list.bullet")
+                }
+                .accessibilityLabel("View Bookmarks")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     isMarkupActive.toggle()
                 } label: {
                     Label("Markup", systemImage: isMarkupActive ? "pencil.tip.crop.circle.fill" : "pencil.tip.crop.circle")
@@ -147,6 +194,19 @@ struct PDFViewerView: View {
             if let summary {
                 SummaryEditorView(summary: summary, onSave: onSummaryEdit)
             }
+        }
+        .sheet(isPresented: $isShowingBookmarks) {
+            PDFBookmarkListView(
+                pdfTitle: title,
+                bookmarks: viewModel.bookmarks,
+                onSelect: { bookmark in
+                    navigationCoordinator.goToPage(index: bookmark.pageIndex)
+                    isShowingBookmarks = false
+                },
+                onDelete: { bookmark in
+                    viewModel.deleteBookmark(bookmark)
+                }
+            )
         }
         .onAppear {
             if viewModel.document == nil && viewModel.loadError == nil {
@@ -159,6 +219,7 @@ struct PDFViewerView: View {
             if viewModel.document != nil {
                 markupCoordinator.loadStoredMarkup(initialMarkupData, document: viewModel.document)
             }
+            viewModel.loadBookmarks()
         }
         .onChange(of: viewModel.document == nil) { _, isNil in
             if !isNil {
@@ -174,6 +235,113 @@ struct PDFViewerView: View {
                 onMarkupSave?(data)
             }
         }
+        .onChange(of: viewModel.searchStateVersion) { _, _ in
+            navigationCoordinator.showSearchMatches(
+                viewModel.searchMatches.map(\.selection),
+                currentIndex: viewModel.currentMatchIndex
+            )
+        }
+        .onChange(of: isFindActive) { _, isActive in
+            if !isActive {
+                findQuery = ""
+                viewModel.clearSearch()
+                navigationCoordinator.clearSearchMatches()
+            }
+        }
+    }
+
+    private var findMatchCountText: String? {
+        guard !findQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        guard !viewModel.searchMatches.isEmpty else { return "No results" }
+        return "\((viewModel.currentMatchIndex ?? 0) + 1) of \(viewModel.searchMatches.count)"
+    }
+
+    /// Toggles a bookmark on whichever page is currently on screen — a plain
+    /// tap, not a menu, per the "tapping creates/removes" requirement.
+    /// `navigationCoordinator.currentPageIndex` is `@Observable`-backed now,
+    /// so this button's filled/outline state actually updates as the user
+    /// scrolls, instead of only refreshing on unrelated re-renders.
+    private var bookmarkToggleButton: some View {
+        let currentPageIndex = navigationCoordinator.currentPageIndex
+        let isCurrentPageBookmarked = currentPageIndex.map(viewModel.isBookmarked) ?? false
+
+        return Button {
+            guard let currentPageIndex else { return }
+            viewModel.toggleBookmark(pageIndex: currentPageIndex)
+        } label: {
+            Image(systemName: isCurrentPageBookmarked ? "bookmark.fill" : "bookmark")
+        }
+        .disabled(currentPageIndex == nil)
+        .accessibilityLabel(isCurrentPageBookmarked ? "Remove Bookmark" : "Bookmark This Page")
+    }
+}
+
+/// Lists every bookmark for this PDF — tap to jump to that page, swipe to
+/// delete. A plain sheet (matches `SummaryEditorView`'s simplicity) rather
+/// than a new persistence-aware view: it only reads `bookmarks` and forwards
+/// taps to closures `PDFViewerView` already has the view model for.
+private struct PDFBookmarkListView: View {
+    let pdfTitle: String
+    let bookmarks: [Bookmark]
+    let onSelect: (Bookmark) -> Void
+    let onDelete: (Bookmark) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private var sortedBookmarks: [Bookmark] {
+        bookmarks.sorted { $0.pageIndex < $1.pageIndex }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if bookmarks.isEmpty {
+                    StudyHubEmptyState(
+                        icon: "bookmark",
+                        title: "No Bookmarks Yet",
+                        message: "Bookmark a page in \(pdfTitle) to find it again quickly."
+                    )
+                } else {
+                    List {
+                        ForEach(sortedBookmarks, id: \.id) { bookmark in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(pdfTitle)
+                                        .font(.subheadline)
+                                    Text(bookmark.pageLabel.map { "Page \($0)" } ?? "Page \(bookmark.pageIndex + 1)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                onSelect(bookmark)
+                            }
+                            .accessibilityAddTraits(.isButton)
+                            .swipeActions(edge: .trailing) {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    onDelete(bookmark)
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.insetGrouped)
+                }
+            }
+            .navigationTitle("Bookmarks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -187,6 +355,7 @@ struct PDFViewerView: View {
 private struct PDFKitRepresentedView: UIViewRepresentable {
     let document: PDFDocument
     let markupCoordinator: PDFMarkupCoordinator
+    let navigationCoordinator: PDFNavigationCoordinator
     let toolManager: PencilToolManager
     let isMarkupActive: Bool
 
@@ -204,6 +373,7 @@ private struct PDFKitRepresentedView: UIViewRepresentable {
         pdfView.pageOverlayViewProvider = markupCoordinator
         pdfView.document = document
         pdfView.isInMarkupMode = isMarkupActive
+        navigationCoordinator.attach(pdfView)
         return pdfView
     }
 

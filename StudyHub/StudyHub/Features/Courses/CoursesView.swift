@@ -9,6 +9,7 @@ struct CoursesView: View {
     let flashcardRepository: any FlashcardRepositoryProtocol
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: CoursesViewModel
@@ -33,6 +34,7 @@ struct CoursesView: View {
         flashcardRepository: any FlashcardRepositoryProtocol,
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
         noteRepository: any NoteRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.courseRepository = courseRepository
@@ -43,6 +45,7 @@ struct CoursesView: View {
         self.flashcardRepository = flashcardRepository
         self.activeRecallRepository = activeRecallRepository
         self.noteRepository = noteRepository
+        self.bookmarkRepository = bookmarkRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
@@ -93,6 +96,7 @@ struct CoursesView: View {
                     lectureRepository: lectureRepository,
                     activeRecallRepository: activeRecallRepository,
                     noteRepository: noteRepository,
+                    bookmarkRepository: bookmarkRepository,
                     pdfService: pdfService
                 )
             }
@@ -114,7 +118,12 @@ struct CoursesView: View {
             }
         )) {
             if let courseForReadings {
-                ReadingListView(course: courseForReadings, readingRepository: readingRepository, pdfService: pdfService)
+                ReadingListView(
+                    course: courseForReadings,
+                    readingRepository: readingRepository,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfService: pdfService
+                )
             }
         }
         .navigationDestination(isPresented: Binding(
@@ -127,6 +136,7 @@ struct CoursesView: View {
                 ResourceListView(
                     course: courseForResources,
                     resourceRepository: resourceRepository,
+                    bookmarkRepository: bookmarkRepository,
                     pdfService: pdfService
                 )
             }
@@ -158,7 +168,12 @@ struct CoursesView: View {
             }
         )) {
             if let courseForNotes {
-                NotesListView(course: courseForNotes, noteRepository: noteRepository, pdfService: pdfService)
+                NotesListView(
+                    course: courseForNotes,
+                    noteRepository: noteRepository,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfService: pdfService
+                )
             }
         }
         .onAppear {

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ReadingListView: View {
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: ReadingViewModel
@@ -8,7 +9,13 @@ struct ReadingListView: View {
     @State private var readingForPDFViewing: Reading?
     @Environment(\.openURL) private var openURL
 
-    init(course: Course, readingRepository: any ReadingRepositoryProtocol, pdfService: any PDFServiceProtocol) {
+    init(
+        course: Course,
+        readingRepository: any ReadingRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
+    ) {
+        self.bookmarkRepository = bookmarkRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: ReadingViewModel(
             course: course,
@@ -41,9 +48,9 @@ struct ReadingListView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .create:
-                ReadingFormView(viewModel: viewModel, reading: nil, pdfService: pdfService)
+                ReadingFormView(viewModel: viewModel, reading: nil, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
             case .edit(let reading):
-                ReadingFormView(viewModel: viewModel, reading: reading, pdfService: pdfService)
+                ReadingFormView(viewModel: viewModel, reading: reading, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
             }
         }
         .navigationDestination(isPresented: Binding(
@@ -73,6 +80,7 @@ struct ReadingListView: View {
                     onMarkupSave: { data in
                         viewModel.saveMarkup(data, for: attachment)
                     },
+                    bookmarkRepository: bookmarkRepository,
                     pdfService: pdfService
                 )
             }

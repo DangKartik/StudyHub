@@ -3,6 +3,7 @@ import SwiftUI
 struct LectureListView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: LectureViewModel
@@ -15,10 +16,12 @@ struct LectureListView: View {
         lectureRepository: any LectureRepositoryProtocol,
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
         noteRepository: any NoteRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.activeRecallRepository = activeRecallRepository
         self.noteRepository = noteRepository
+        self.bookmarkRepository = bookmarkRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: LectureViewModel(
             course: course,
@@ -73,7 +76,12 @@ struct LectureListView: View {
             }
         )) {
             if let lectureForNotes {
-                NotesListView(lecture: lectureForNotes, noteRepository: noteRepository, pdfService: pdfService)
+                NotesListView(
+                    lecture: lectureForNotes,
+                    noteRepository: noteRepository,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfService: pdfService
+                )
             }
         }
         .onAppear {

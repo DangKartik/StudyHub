@@ -20,7 +20,8 @@ enum ModelContainerFactory {
             Quote.self,
             StatisticsSnapshot.self,
             Attachment.self,
-            CalendarEventReference.self
+            CalendarEventReference.self,
+            Bookmark.self
         ])
 
         let configuration = ModelConfiguration(
