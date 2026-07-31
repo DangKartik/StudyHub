@@ -105,6 +105,9 @@ struct NoteFormView: View {
                                 viewModel.updateNote(note, title: note.title, body: newBody)
                             }
                         },
+                        onMarkupSave: { data in
+                            viewModel.saveMarkup(data, for: attachmentForViewing)
+                        },
                         pdfService: pdfService
                     )
                 }

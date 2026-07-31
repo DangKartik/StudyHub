@@ -82,6 +82,19 @@ final class ResourceViewModel {
             loadError = PersistenceError.deleteFailed(underlying: error)
         }
     }
+
+    /// Persists a PDF's PencilKit markup (Phase 3N.6.4) — no list reload
+    /// needed, since markup data isn't shown in any Resource row.
+    func saveMarkup(_ data: Data, for resource: Resource) {
+        resource.markupData = data
+        do {
+            try resourceRepository.save()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
 }
 
 extension ResourceType {
