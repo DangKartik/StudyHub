@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct ReadingFormView: View {
     let viewModel: ReadingViewModel
     let reading: Reading?
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @Environment(\.dismiss) private var dismiss
@@ -118,7 +119,7 @@ struct ReadingFormView: View {
                 }
             )) {
                 if let attachmentForViewing {
-                    PDFViewerView(attachment: attachmentForViewing, pdfService: pdfService)
+                    PDFViewerView(attachment: attachmentForViewing, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
                 }
             }
             .alert(

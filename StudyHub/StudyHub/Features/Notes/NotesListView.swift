@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct NotesListView: View {
+    let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: NotesViewModel
@@ -11,7 +12,13 @@ struct NotesListView: View {
     @State private var noteForPDFViewing: Note?
     @Environment(\.openURL) private var openURL
 
-    init(course: Course, noteRepository: any NoteRepositoryProtocol, pdfService: any PDFServiceProtocol) {
+    init(
+        course: Course,
+        noteRepository: any NoteRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
+    ) {
+        self.bookmarkRepository = bookmarkRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: NotesViewModel(
             scope: .course(course),
@@ -19,7 +26,13 @@ struct NotesListView: View {
         ))
     }
 
-    init(lecture: Lecture, noteRepository: any NoteRepositoryProtocol, pdfService: any PDFServiceProtocol) {
+    init(
+        lecture: Lecture,
+        noteRepository: any NoteRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
+    ) {
+        self.bookmarkRepository = bookmarkRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: NotesViewModel(
             scope: .lecture(lecture),
@@ -78,9 +91,9 @@ struct NotesListView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .create:
-                NoteFormView(viewModel: viewModel, note: nil, pdfService: pdfService)
+                NoteFormView(viewModel: viewModel, note: nil, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
             case .edit(let note):
-                NoteFormView(viewModel: viewModel, note: note, pdfService: pdfService)
+                NoteFormView(viewModel: viewModel, note: note, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
             }
         }
         .navigationDestination(isPresented: Binding(
@@ -102,6 +115,7 @@ struct NotesListView: View {
                     onMarkupSave: { data in
                         viewModel.saveMarkup(data, for: attachmentForViewing)
                     },
+                    bookmarkRepository: bookmarkRepository,
                     pdfService: pdfService
                 )
             }

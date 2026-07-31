@@ -132,6 +132,15 @@ final class PDFMarkupCoordinator: NSObject, PDFPageOverlayViewProvider, PKCanvas
         // Same dark-mode-ink fix as the rest of the markup pipeline.
         canvas.overrideUserInterfaceStyle = .light
         canvas.delegate = self
+        // Explicit rather than relying on `.default`'s conditional pencil-only
+        // behavior (which only applies "if a PKToolPicker is visible" — we
+        // never show one, and `.default`'s no-tool-picker fallback happens to
+        // already mean pencil-only, but `.pencilOnly` makes that guaranteed
+        // and independent of the system's own `prefersPencilOnlyDrawing`
+        // setting). Governs drawing eligibility only — hit-testing/touch
+        // routing between this canvas and PDFView's own scroll/pinch is
+        // `PDFView.isInMarkupMode`'s job, unaffected by this property.
+        canvas.drawingPolicy = .pencilOnly
         canvas.tool = toolManager?.currentTool ?? PKInkingTool(.pen)
         // Sized to the page's own native point space — PDFKit itself scales
         // and positions this view to match the page's current on-screen
