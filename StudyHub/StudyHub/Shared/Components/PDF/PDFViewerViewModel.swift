@@ -1,5 +1,5 @@
 import Foundation
-import PDFKit
+@preconcurrency import PDFKit
 
 /// One PDF search result, precomputed for display — `PDFSelection` itself
 /// exposes `.string`/`.pages`, but callers need the 0-based page index (to
