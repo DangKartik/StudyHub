@@ -16,6 +16,11 @@ final class Reading {
     @Relationship(deleteRule: .cascade, inverse: \Attachment.reading)
     var attachments: [Attachment] = []
 
+    /// .nullify, not .cascade — deleting a Reading must not destroy notes the
+    /// user wrote about it. See DECISION-032.
+    @Relationship(deleteRule: .nullify, inverse: \Note.reading)
+    var noteEntries: [Note] = []
+
     init(
         id: UUID = UUID(),
         title: String,

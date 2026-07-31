@@ -42,6 +42,11 @@ final class NotesViewModel {
     enum Scope {
         case course(Course)
         case lecture(Lecture)
+        /// Cross-course "All Notes" browsing (Phase 3.1) — backed by
+        /// `fetchAll()`, not a relationship walk. Read-only: notes have no
+        /// unambiguous owner to assign from this scope, so creation is
+        /// disabled here (see `supportsCreation`).
+        case global
     }
 
     private let scope: Scope
@@ -75,11 +80,32 @@ final class NotesViewModel {
         return []
     }
 
+    /// True for `.course`/`.lecture` scopes, which have an unambiguous owner
+    /// to assign a new note to. `.global` has none (a note's owner is never
+    /// inferred), so note creation is not offered from that scope.
+    var supportsCreation: Bool {
+        switch scope {
+        case .course, .lecture:
+            return true
+        case .global:
+            return false
+        }
+    }
+
+    /// Every distinct tag across the already-loaded `notes` array, sorted —
+    /// feeds the tag-filter menu. Client-side, matching `displayedNotes`.
+    var allTags: [String] {
+        Set(notes.flatMap(\.tags)).sorted()
+    }
+
     /// Client-side filter + sort over the already-loaded `notes` array — no
     /// repository call needed, since aggregation already loaded the full
-    /// candidate set.
-    func displayedNotes(filter: NoteFilter, sortOrder: NoteSortOrder) -> [Note] {
-        let filtered: [Note]
+    /// candidate set. `searchText` matches title or body (case/diacritic
+    /// insensitive); `tag`, when set, requires an exact match in the note's
+    /// `tags` array. Both are in-memory per DECISION-031's foundation scope —
+    /// no repository-level search is introduced.
+    func displayedNotes(filter: NoteFilter, sortOrder: NoteSortOrder, searchText: String = "", tag: String? = nil) -> [Note] {
+        var filtered: [Note]
         switch filter {
         case .all:
             filtered = notes
@@ -89,6 +115,17 @@ final class NotesViewModel {
             filtered = notes.filter { $0.lecture != nil }
         case .hasAttachments:
             filtered = notes.filter { !$0.attachments.isEmpty }
+        }
+
+        let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedSearch.isEmpty {
+            filtered = filtered.filter {
+                $0.title.localizedStandardContains(trimmedSearch) || $0.body.localizedStandardContains(trimmedSearch)
+            }
+        }
+
+        if let tag {
+            filtered = filtered.filter { $0.tags.contains(tag) }
         }
 
         switch sortOrder {
@@ -110,6 +147,8 @@ final class NotesViewModel {
                 notes = try noteRepository.fetch(forCourseIncludingLectures: course)
             case .lecture(let lecture):
                 notes = try noteRepository.fetch(forLecture: lecture)
+            case .global:
+                notes = try noteRepository.fetchAll()
             }
             loadError = nil
         } catch let error as StudyHubError {
@@ -131,6 +170,8 @@ final class NotesViewModel {
     /// only once the note is actually being saved, before being linked and
     /// saved via the same `createAttachment(_:for:)` path `addAttachment` uses.
     func createNote(title: String, body: String, lecture: Lecture? = nil, attachments: [Attachment] = []) {
+        guard supportsCreation else { return }
+
         let note = Note(title: title, body: body)
         switch scope {
         case .course(let course):
@@ -141,6 +182,8 @@ final class NotesViewModel {
             }
         case .lecture(let lecture):
             note.lecture = lecture
+        case .global:
+            return
         }
 
         do {

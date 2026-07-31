@@ -9,6 +9,8 @@ struct NotesListView: View {
     @State private var activeSheet: NoteSheet?
     @State private var filter: NoteFilter = .all
     @State private var sortOrder: NoteSortOrder = .newestCreated
+    @State private var searchText: String = ""
+    @State private var selectedTag: String?
     @State private var attachmentForViewing: Attachment?
     @State private var noteForPDFViewing: Note?
     @Environment(\.openURL) private var openURL
@@ -45,51 +47,81 @@ struct NotesListView: View {
         ))
     }
 
+    /// Cross-course "All Notes" browsing (Phase 3.1) — no Course/Lecture
+    /// scope, backed by `NotesViewModel.Scope.global`. See DECISION-031.
+    init(
+        noteRepository: any NoteRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
+    ) {
+        self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
+        self.pdfService = pdfService
+        _viewModel = State(wrappedValue: NotesViewModel(
+            scope: .global,
+            noteRepository: noteRepository
+        ))
+    }
+
     private var displayedNotes: [Note] {
-        viewModel.displayedNotes(filter: filter, sortOrder: sortOrder)
+        viewModel.displayedNotes(filter: filter, sortOrder: sortOrder, searchText: searchText, tag: selectedTag)
     }
 
     var body: some View {
-        Group {
-            if viewModel.notes.isEmpty {
-                StudyHubEmptyState(
-                    icon: "note.text",
-                    title: "No Notes Yet",
-                    message: "Add a note to keep track of what matters."
-                )
-            } else if displayedNotes.isEmpty {
-                StudyHubEmptyState(
-                    icon: "line.3.horizontal.decrease.circle",
-                    title: "No Matching Notes",
-                    message: "Try a different filter."
-                )
-            } else {
-                list
+        VStack(alignment: .leading, spacing: 0) {
+            header
+
+            Group {
+                if viewModel.notes.isEmpty {
+                    StudyHubEmptyState(
+                        icon: "note.text",
+                        title: "No Notes Yet",
+                        message: "Add a note to keep track of what matters."
+                    )
+                } else if displayedNotes.isEmpty {
+                    StudyHubEmptyState(
+                        icon: "line.3.horizontal.decrease.circle",
+                        title: "No Matching Notes",
+                        message: "Try a different filter."
+                    )
+                } else {
+                    list
+                }
             }
         }
         .navigationTitle("Notes")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, prompt: "Search Notes")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    activeSheet = .create
-                } label: {
-                    Label("Add Note", systemImage: "plus")
+            if viewModel.supportsCreation {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        activeSheet = .create
+                    } label: {
+                        Label("Add Note", systemImage: "plus")
+                    }
                 }
             }
-            ToolbarItem(placement: .secondaryAction) {
+            ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Picker("Filter", selection: $filter) {
                         ForEach(NoteFilter.allCases) { filterOption in
                             Text(filterOption.label).tag(filterOption)
                         }
                     }
-                    Picker("Sort", selection: $sortOrder) {
-                        ForEach(NoteSortOrder.allCases) { sortOption in
-                            Text(sortOption.label).tag(sortOption)
+                    .pickerStyle(.inline)
+                    if !viewModel.allTags.isEmpty {
+                        Picker("Tag", selection: $selectedTag) {
+                            Text("All Tags").tag(String?.none)
+                            ForEach(viewModel.allTags, id: \.self) { tag in
+                                Text(tag).tag(String?.some(tag))
+                            }
                         }
+                        .pickerStyle(.inline)
                     }
                 } label: {
-                    Label("Filter & Sort", systemImage: "line.3.horizontal.decrease.circle")
+                    Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                 }
             }
         }
@@ -129,6 +161,32 @@ struct NotesListView: View {
         .onAppear {
             viewModel.loadNotes()
         }
+    }
+
+    /// Custom title row — replaces the system large title (suppressed via
+    /// .navigationBarTitleDisplayMode(.inline)) so Sort can sit on the same
+    /// line as "Notes" instead of in the toolbar.
+    private var header: some View {
+        HStack {
+            Text("Notes")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+
+            Spacer()
+
+            Menu {
+                Picker("Sort", selection: $sortOrder) {
+                    ForEach(NoteSortOrder.allCases) { sortOption in
+                        Text(sortOption.label).tag(sortOption)
+                    }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Label("Sort", systemImage: "arrow.up.arrow.down")
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
     }
 
     private var list: some View {
@@ -221,9 +279,25 @@ private struct NoteRowView: View {
         return trimmed.isEmpty ? "No additional text" : trimmed
     }
 
+    /// The note's single owner (DECISION-031): Lecture name, else Reading
+    /// title, else Course name — exactly one is ever set. Falls back to
+    /// "Unfiled" for a note whose owner was nullified by a Reading deletion
+    /// (DECISION-032).
+    private var ownerContext: String {
+        if let lecture = note.lecture {
+            return lecture.topic
+        }
+        if let reading = note.reading {
+            return reading.title
+        }
+        if let course = note.course {
+            return course.name
+        }
+        return "Unfiled"
+    }
+
     /// "Created <date>", plus "Edited <date>" only if the edited date differs
-    /// from the created date, plus an ownership indicator — either "Course
-    /// Note" or the owning Lecture's name. See DECISION-030.
+    /// from the created date, plus the owner context. See DECISION-030/031.
     private var metadataText: String {
         var parts: [String] = ["Created \(note.createdAt.formatted(date: .abbreviated, time: .omitted))"]
 
@@ -231,13 +305,13 @@ private struct NoteRowView: View {
             parts.append("Edited \(note.updatedAt.formatted(date: .abbreviated, time: .omitted))")
         }
 
-        if let lecture = note.lecture {
-            parts.append(lecture.topic)
-        } else {
-            parts.append("Course Note")
-        }
+        parts.append(ownerContext)
 
         return parts.joined(separator: " · ")
+    }
+
+    private var tagsText: String? {
+        note.tags.isEmpty ? nil : note.tags.joined(separator: ", ")
     }
 
     var body: some View {
@@ -252,6 +326,11 @@ private struct NoteRowView: View {
                 Text(metadataText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let tagsText {
+                    Text(tagsText)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             Spacer()
@@ -265,6 +344,7 @@ private struct NoteRowView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "\(note.title.isEmpty ? "Untitled Note" : note.title). \(bodyPreview). \(metadataText)." +
+            (tagsText.map { " Tags: \($0)." } ?? "") +
             (note.attachments.isEmpty ? "" : " Has attachments.")
         )
     }

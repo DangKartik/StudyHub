@@ -13,6 +13,7 @@ protocol NoteRepositoryProtocol {
     func fetch(forCourse course: Course) throws -> [Note]
     func fetch(forCourseIncludingLectures course: Course) throws -> [Note]
     func fetch(forLecture lecture: Lecture) throws -> [Note]
+    func fetch(forReading reading: Reading) throws -> [Note]
 
     func createAttachment(_ attachment: Attachment, for note: Note) throws
     func deleteAttachment(_ attachment: Attachment) throws
@@ -65,11 +66,14 @@ final class NoteRepository: NoteRepositoryProtocol {
     }
 
     /// Aggregates notes attached directly to the Course with notes attached to any
-    /// of its Lectures. Both sets are structurally exclusive (a Note is ever only
-    /// `note.course` or `note.lecture`, never both — see `NotesViewModel.createNote`),
-    /// so this concatenation cannot duplicate a Note. Walks the relationship graph
-    /// directly rather than a `#Predicate` across `note.lecture?.course`, matching
-    /// every other fetch method in this repository.
+    /// of its Lectures. All three ownership sets are structurally exclusive (a Note
+    /// has exactly one of `note.course`, `note.lecture`, or `note.reading`, never
+    /// more than one — see `NotesViewModel.createNote` and DECISION-031), so this
+    /// concatenation cannot duplicate a Note. Reading-owned notes deliberately never
+    /// appear here, even though a Reading belongs to a Course — DECISION-031 rules
+    /// out surfacing Reading ownership as Course ownership. Walks the relationship
+    /// graph directly rather than a `#Predicate` across `note.lecture?.course`,
+    /// matching every other fetch method in this repository.
     func fetch(forCourseIncludingLectures course: Course) throws -> [Note] {
         let courseNotes = course.noteEntries
         let lectureNotes = course.lectures.flatMap { $0.noteEntries }
@@ -78,6 +82,10 @@ final class NoteRepository: NoteRepositoryProtocol {
 
     func fetch(forLecture lecture: Lecture) throws -> [Note] {
         lecture.noteEntries.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    func fetch(forReading reading: Reading) throws -> [Note] {
+        reading.noteEntries.sorted { $0.createdAt < $1.createdAt }
     }
 
     func createAttachment(_ attachment: Attachment, for note: Note) throws {
