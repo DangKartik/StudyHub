@@ -8,6 +8,31 @@
 
 ---
 
+# Current System Status
+
+**Baseline commit:** `418adfa` ("Fix PDF reading position restore and persistent progress tracking")
+
+**Completed:**
+- ✅ Academic structure
+- ✅ Courses/Semesters/Lectures
+- ✅ Readings/Resources
+- ✅ PDF reading system
+- ✅ PencilKit markup
+- ✅ Search
+- ✅ Bookmarks
+- ✅ Outline navigation
+- ✅ Reading progress persistence
+
+**Next Phase — Learning Intelligence:**
+- Notes system upgrade
+- PDF ↔ Notes linking
+- Flashcards
+- Active Recall
+- Study Mode
+- Learning analytics
+
+---
+
 # 1. Purpose
 
 This document defines the long-term product evolution strategy for StudyHub.
