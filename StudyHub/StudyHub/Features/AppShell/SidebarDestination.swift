@@ -6,6 +6,7 @@ enum SidebarDestination: String, CaseIterable, Identifiable, Hashable {
     case calendar
     case studyMode
     case flashcards
+    case notes
     case statistics
     case resources
     case search
@@ -20,6 +21,7 @@ enum SidebarDestination: String, CaseIterable, Identifiable, Hashable {
         case .calendar: return "Calendar"
         case .studyMode: return "Study Mode"
         case .flashcards: return "Flashcards"
+        case .notes: return "Notes"
         case .statistics: return "Statistics"
         case .resources: return "Resources"
         case .search: return "Search"
@@ -34,6 +36,7 @@ enum SidebarDestination: String, CaseIterable, Identifiable, Hashable {
         case .calendar: return "calendar"
         case .studyMode: return "brain.head.profile"
         case .flashcards: return "rectangle.stack.fill"
+        case .notes: return "note.text"
         case .statistics: return "chart.bar.fill"
         case .resources: return "folder.fill"
         case .search: return "magnifyingglass"

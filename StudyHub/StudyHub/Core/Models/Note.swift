@@ -11,6 +11,15 @@ final class Note {
 
     var course: Course?
     var lecture: Lecture?
+    var reading: Reading?
+
+    /// Filterable/displayable in the global Notes list (Phase 3.1); no tag
+    /// editor exists yet in NoteFormView.
+    var tags: [String] = []
+
+    /// Phase 3.1 foundation field — no UI sets this yet, reserved for a future
+    /// PDF-linking phase. See DECISION-031.
+    var sourcePage: Int?
 
     @Relationship(deleteRule: .cascade, inverse: \Attachment.note)
     var attachments: [Attachment] = []

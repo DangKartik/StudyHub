@@ -2422,6 +2422,140 @@ Course Notes aggregation (fetch(forCourseIncludingLectures:)) requires no change
 
 ---
 
+# DECISION-031
+
+## Decision
+
+A Note has exactly one primary academic owner: Course, Lecture, or Reading — never more than one simultaneously. When a Note is linked to a Reading, that ownership is not also considered Course ownership, even though the Reading itself belongs to a Course — Reading-owned notes are never duplicated into `fetch(forCourseIncludingLectures:)` or any other Course-level aggregation.
+
+---
+
+## Context
+
+Phase 3.1 (Notes Foundation) adds `Note.reading: Reading?` alongside the existing `Note.course`/`Note.lecture` optionals (DECISION-028/030). `NoteRepository.swift`'s existing invariant, documented at `fetch(forCourseIncludingLectures:)`, already assumed strict two-way exclusivity ("a Note is ever only `note.course` or `note.lecture`, never both"). Adding a third optional relationship without an explicit exclusivity rule would leave Course-level aggregation and the new global Notes list free to produce notes with more than one owner set, or to double-surface a Reading-owned note under its parent Course.
+
+---
+
+## Options Considered
+
+### Allow a Note to carry Course, Lecture, and Reading simultaneously
+
+Pros:
+
+```
+Maximum flexibility — a note could be tagged with every relevant context at once
+```
+
+Cons:
+
+```
+Reintroduces exactly the ambiguity the existing course/lecture invariant was written to avoid
+Course-level aggregation would need new logic to avoid showing the same note twice (once directly, once via its Reading)
+No current UI need for a note to belong to more than one place at once
+```
+
+---
+
+### Exactly one owner: Course, Lecture, or Reading — never multiple
+
+Pros:
+
+```
+Extends the existing, already-proven course/lecture exclusivity invariant to three cases instead of inventing new logic
+Course-level aggregation stays correct by construction: a Reading-owned note simply never sets note.course, so it can never be double-counted
+Matches how ownership already displays in the UI — one line of "owner context" per note
+```
+
+Cons:
+
+```
+A note "about a Reading that belongs to Course X" can't also appear in Course X's own Notes list without an explicit future design change
+```
+
+---
+
+## Decision Reasoning
+
+Extending the existing two-way exclusivity invariant to three cases is the minimal, consistent choice — it requires no new logic anywhere the invariant is already relied upon (`fetch(forCourseIncludingLectures:)`, note creation, the global Notes list), and avoids inventing double-counting/deduplication logic for a need that hasn't been requested.
+
+---
+
+## Impact
+
+```
+Note creation logic (NotesViewModel.createNote and any future Reading-scoped creation path) must set exactly one of course/lecture/reading, never more than one
+fetch(forCourseIncludingLectures:) requires no logic change — Reading-owned notes naturally never appear there, since they never set note.course
+The global Notes list (Phase 3.1) displays exactly one owner per note: Lecture name, else Reading title, else Course name
+This phase does not add a UI path to actually set note.reading (no Reading-scoped Notes screen, no Reading picker in NoteFormView) — the relationship is schema-level foundation only, consistent with "Phase 3.1 Foundation" scope
+```
+
+---
+
+# DECISION-032
+
+## Decision
+
+Deleting a Reading must not delete its linked Notes. `Reading.noteEntries` uses `deleteRule: .nullify` — when a Reading is deleted, any Note that referenced it has `note.reading` set to `nil` and is preserved.
+
+---
+
+## Context
+
+Every existing Note ownership relationship (Course, Lecture) uses `deleteRule: .cascade` (`Course.swift:48`, `Lecture.swift:29`) — deleting the parent deletes its Notes. Phase 3.1 adds a third ownership relationship, `Note.reading`, and the same cascade default would silently delete a user's notes whenever they delete a Reading — a meaningfully lighter-weight, more frequent action than deleting a whole Course.
+
+---
+
+## Options Considered
+
+### Cascade, matching Course/Lecture
+
+Pros:
+
+```
+Consistent with the existing two precedents (Course.swift:48, Lecture.swift:29)
+```
+
+Cons:
+
+```
+A Reading is a much lighter-weight, more frequently deleted entity than a Course — losing notes silently on Reading deletion is a real data-loss risk for content the user likely wrote deliberately
+```
+
+---
+
+### Nullify — detach, don't delete
+
+Pros:
+
+```
+Preserves user-authored content by default; deleting a reading is a routine, low-stakes action that shouldn't be able to destroy unrelated notes
+Existing precedent already exists in this codebase for exactly this choice: Lecture.swift:26 uses .nullify for Flashcard.lecture
+```
+
+Cons:
+
+```
+A "detached" note (reading == nil, course == nil, lecture == nil) has no owner and won't appear in any scoped Notes list — only the global Notes list (Phase 3.1) surfaces it
+```
+
+---
+
+## Decision Reasoning
+
+Notes are user-authored content, not disposable metadata — deleting a Reading is routine and shouldn't be able to destroy them as a side effect. `.nullify` already has a direct precedent in this codebase (`Flashcard.lecture`), so this isn't a new pattern, just applying the existing "preserve user content over strict ownership cascade" precedent to a new relationship.
+
+---
+
+## Impact
+
+```
+Reading.swift gains: @Relationship(deleteRule: .nullify, inverse: \Note.reading) var noteEntries: [Note] = []
+Deleting a Reading no longer deletes its linked Notes — they become ownerless (reading == nil) and surface only in the global Notes list
+No change to Course/Lecture cascade behavior — this decision is scoped to the new Reading relationship only
+```
+
+---
+
 # Decision Index
 
 ```
@@ -2573,6 +2707,16 @@ FileService Deferral — AttachmentFileImporter Utility
 DECISION-030
 
 Course Notes Lecture Association
+
+
+DECISION-031
+
+Note Ownership Exclusivity — Course, Lecture, or Reading
+
+
+DECISION-032
+
+Reading Deletion Nullifies, Does Not Cascade, Notes
 ```
 
 ---

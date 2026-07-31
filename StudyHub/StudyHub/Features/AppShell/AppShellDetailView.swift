@@ -60,6 +60,13 @@ struct AppShellDetailView: View {
                 pdfProgressRepository: pdfProgressRepository,
                 pdfService: pdfService
             )
+        case .notes:
+            NotesListView(
+                noteRepository: noteRepository,
+                bookmarkRepository: bookmarkRepository,
+                pdfProgressRepository: pdfProgressRepository,
+                pdfService: pdfService
+            )
         case .some(let destination):
             StudyHubEmptyState(
                 icon: destination.systemImage,
