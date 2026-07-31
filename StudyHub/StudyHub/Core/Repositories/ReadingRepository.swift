@@ -11,8 +11,6 @@ protocol ReadingRepositoryProtocol {
     func count() throws -> Int
 
     func fetch(forCourse course: Course) throws -> [Reading]
-    func inProgress() throws -> [Reading]
-    func completed() throws -> [Reading]
 
     func createAttachment(_ attachment: Attachment, for reading: Reading) throws
     func deleteAttachment(_ attachment: Attachment) throws
@@ -62,20 +60,6 @@ final class ReadingRepository: ReadingRepositoryProtocol {
 
     func fetch(forCourse course: Course) throws -> [Reading] {
         course.readings.sorted { $0.title < $1.title }
-    }
-
-    func inProgress() throws -> [Reading] {
-        let descriptor = FetchDescriptor<Reading>(
-            predicate: #Predicate { $0.currentPage > 0 && $0.currentPage < $0.pageCount }
-        )
-        return try persistenceFetch { try modelContext.fetch(descriptor) }
-    }
-
-    func completed() throws -> [Reading] {
-        let descriptor = FetchDescriptor<Reading>(
-            predicate: #Predicate { $0.pageCount > 0 && $0.currentPage >= $0.pageCount }
-        )
-        return try persistenceFetch { try modelContext.fetch(descriptor) }
     }
 
     func createAttachment(_ attachment: Attachment, for reading: Reading) throws {

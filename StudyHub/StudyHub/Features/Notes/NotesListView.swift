@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NotesListView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: NotesViewModel
@@ -16,9 +17,11 @@ struct NotesListView: View {
         course: Course,
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: NotesViewModel(
             scope: .course(course),
@@ -30,9 +33,11 @@ struct NotesListView: View {
         lecture: Lecture,
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: NotesViewModel(
             scope: .lecture(lecture),
@@ -91,9 +96,9 @@ struct NotesListView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .create:
-                NoteFormView(viewModel: viewModel, note: nil, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
+                NoteFormView(viewModel: viewModel, note: nil, bookmarkRepository: bookmarkRepository, pdfProgressRepository: pdfProgressRepository, pdfService: pdfService)
             case .edit(let note):
-                NoteFormView(viewModel: viewModel, note: note, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
+                NoteFormView(viewModel: viewModel, note: note, bookmarkRepository: bookmarkRepository, pdfProgressRepository: pdfProgressRepository, pdfService: pdfService)
             }
         }
         .navigationDestination(isPresented: Binding(
@@ -116,6 +121,7 @@ struct NotesListView: View {
                         viewModel.saveMarkup(data, for: attachmentForViewing)
                     },
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }

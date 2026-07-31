@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ResourceListView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: ResourceViewModel
@@ -14,9 +15,11 @@ struct ResourceListView: View {
         course: Course,
         resourceRepository: any ResourceRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: ResourceViewModel(
             course: course,
@@ -97,6 +100,7 @@ struct ResourceListView: View {
                         viewModel.saveMarkup(data, for: resourceForPDFViewing)
                     },
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }

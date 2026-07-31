@@ -67,15 +67,16 @@ final class PDFNavigationCoordinator {
         pdfView?.go(to: destination)
     }
 
-    /// Shows every search match at once (a subtle shared highlight) with the
-    /// current match emphasized in a distinct color, and scrolls to reveal
-    /// it — done via `highlightedSelections` (a plain, non-animated redraw)
-    /// plus one `go(to:)` scroll only. Deliberately does *not* call
-    /// `setCurrentSelection(_:animate:)`: its "animate" flag triggers
-    /// PDFKit's own attention-drawing flash on top of `go(to:)`'s scroll —
-    /// two competing animated transitions is exactly what produced the
-    /// shrink/fade-then-jump behavior.
-    func showSearchMatches(_ selections: [PDFSelection], currentIndex: Int?) {
+    /// Highlights every search match at once (a subtle shared highlight)
+    /// with the current match emphasized in a distinct color — a plain,
+    /// non-scrolling redraw via `highlightedSelections`. Deliberately does
+    /// *not* scroll or call `setCurrentSelection(_:animate:)`: this runs on
+    /// every keystroke while typing a query, and scrolling the page out
+    /// from under the user (and, empirically, dismissing the keyboard along
+    /// with it) on every keystroke is exactly the behavior that's wrong.
+    /// Scrolling only happens via `goToSelection`, from explicit Next/
+    /// Previous taps.
+    func highlightSearchMatches(_ selections: [PDFSelection], currentIndex: Int?) {
         guard let pdfView else { return }
         for (index, selection) in selections.enumerated() {
             selection.color = index == currentIndex
@@ -83,9 +84,38 @@ final class PDFNavigationCoordinator {
                 : UIColor.systemYellow.withAlphaComponent(0.45)
         }
         pdfView.highlightedSelections = selections.isEmpty ? nil : selections
-        if let currentIndex, selections.indices.contains(currentIndex) {
-            pdfView.go(to: selections[currentIndex])
-        }
+    }
+
+    /// Scrolls to reveal one specific search match, leaving a top margin so
+    /// it doesn't land flush under `PDFFindBar`'s overlay — called only
+    /// from explicit Next/Previous actions, never from typing.
+    ///
+    /// Deliberately uses `goToRect(_:on:)`, not the more obvious
+    /// `goToSelection(_:)` — two reasons: (1) `goToSelection` has no way to
+    /// add margin, it just reveals the selection's first character; (2)
+    /// `PDFView.h` documents *both* methods as "if already visible, does
+    /// nothing" — this is almost certainly why plain `goToSelection` was
+    /// intermittently a no-op requiring repeated presses (PDFKit considered
+    /// the destination "already visible" even when it wasn't positioned
+    /// anywhere near where you'd want it). The padded rect this constructs
+    /// (selection height plus ~28% of the viewport) is large enough that
+    /// it's rarely already fully on-screen, which sidesteps that no-op case
+    /// too, not just adds the margin.
+    func goToSelection(_ selection: PDFSelection) {
+        guard let pdfView, let page = selection.pages.first else { return }
+        let selectionBounds = selection.bounds(for: page)
+        let scale = pdfView.scaleFactor > 0 ? pdfView.scaleFactor : 1
+        // Screen-space margin converted to page-space via the live zoom
+        // scale, since `goToRect(_:on:)` takes page coordinates, not points
+        // on screen.
+        let topMarginInPageSpace = (pdfView.bounds.height * 0.28) / scale
+        let paddedRect = CGRect(
+            x: selectionBounds.minX,
+            y: selectionBounds.minY,
+            width: selectionBounds.width,
+            height: selectionBounds.height + topMarginInPageSpace
+        )
+        pdfView.go(to: paddedRect, on: page)
     }
 
     func clearSearchMatches() {

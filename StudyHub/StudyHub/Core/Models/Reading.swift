@@ -6,9 +6,6 @@ final class Reading {
     var id: UUID = UUID()
     var title: String = ""
     var author: String = ""
-    var pageCount: Int = 0
-    var currentPage: Int = 0
-    var estimatedMinutes: Int = 0
     var notes: String = ""
     var dueDate: Date?
     var createdAt: Date = Date.now
@@ -23,9 +20,6 @@ final class Reading {
         id: UUID = UUID(),
         title: String,
         author: String = "",
-        pageCount: Int = 0,
-        currentPage: Int = 0,
-        estimatedMinutes: Int = 0,
         notes: String = "",
         dueDate: Date? = nil,
         createdAt: Date = Date.now,
@@ -34,9 +28,6 @@ final class Reading {
         self.id = id
         self.title = title
         self.author = author
-        self.pageCount = pageCount
-        self.currentPage = currentPage
-        self.estimatedMinutes = estimatedMinutes
         self.notes = notes
         self.dueDate = dueDate
         self.createdAt = createdAt

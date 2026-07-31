@@ -33,12 +33,22 @@ final class PDFViewerViewModel {
     private let sourceURL: String
     private let pdfService: any PDFServiceProtocol
     private let bookmarkRepository: any BookmarkRepositoryProtocol
+    private let pdfProgressRepository: any PDFProgressRepositoryProtocol
 
     private(set) var document: PDFDocument?
     private(set) var loadError: StudyHubError?
 
     private(set) var bookmarks: [Bookmark] = []
     private(set) var bookmarkError: StudyHubError?
+
+    /// The page to reopen this PDF on — wherever the user literally left
+    /// off, not the furthest page reached (that's tracked separately, for
+    /// progress display only; see `PDFProgress.highestPageIndex`). Loaded
+    /// once via `loadLastPosition()`, then kept current in-memory as
+    /// `saveProgress` is called. `nil` until `loadLastPosition()` is called,
+    /// and stays `nil` if nothing was ever saved for this `sourceURL` —
+    /// either way the viewer just opens on page 1.
+    private(set) var lastPageIndex: Int?
 
     private(set) var outline: [PDFOutlineNode] = []
 
@@ -52,10 +62,16 @@ final class PDFViewerViewModel {
     /// leaves the previous query's highlights on screen.
     private(set) var searchStateVersion = 0
 
-    init(sourceURL: String, pdfService: any PDFServiceProtocol, bookmarkRepository: any BookmarkRepositoryProtocol) {
+    init(
+        sourceURL: String,
+        pdfService: any PDFServiceProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol
+    ) {
         self.sourceURL = sourceURL
         self.pdfService = pdfService
         self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
     }
 
     func loadDocument() {
@@ -67,6 +83,27 @@ final class PDFViewerViewModel {
         } catch {
             loadError = PDFError.documentLoadFailed
         }
+    }
+
+    // MARK: Reading position
+
+    /// Loads wherever the user literally left off in this PDF, if any — call
+    /// once, before the PDF view is first created, so it can open directly
+    /// on that page.
+    func loadLastPosition() {
+        lastPageIndex = (try? pdfProgressRepository.fetch(sourceURL: sourceURL))?.lastPageIndex
+    }
+
+    /// Called on every page change while reading and once more when the
+    /// viewer closes. Always records `pageIndex` as the literal last-viewed
+    /// position (moves both directions — that's what reopening uses), and
+    /// separately advances the progress-percentage high-water mark only
+    /// when `pageIndex` is actually further than before (handled inside the
+    /// repository); scrolling back to re-read something changes where you
+    /// reopen, never the percentage.
+    func saveProgress(pageIndex: Int, pageCount: Int) {
+        lastPageIndex = pageIndex
+        try? pdfProgressRepository.saveProgress(sourceURL: sourceURL, pageIndex: pageIndex, pageCount: pageCount)
     }
 
     // MARK: Bookmarks
@@ -156,43 +193,98 @@ final class PDFViewerViewModel {
 
     // MARK: Search
 
+    private var hasPrewarmedSearchIndex = false
+    private var searchRequestGeneration = 0
+    private(set) var isSearching = false
+
+    /// `PDFDocument.findString` is synchronous and, on its first call for a
+    /// given document, does a full-document text extraction/scan to build
+    /// PDFKit's internal search index — main-actor-bound, this is what was
+    /// freezing the whole UI for a few seconds on a large PDF (worst on the
+    /// very first search, since later ones reuse the already-built index).
+    /// Routing every call — prewarm included — through this one serial
+    /// background queue keeps that work off the main thread, and
+    /// guarantees calls never run concurrently with each other: PDFKit
+    /// doesn't document `findString` as safe for concurrent access from
+    /// multiple threads at once, so a real search typed while the prewarm
+    /// is still running simply queues behind it instead of racing it.
+    private static let searchQueue = DispatchQueue(label: "com.studyhub.pdf-find", qos: .userInitiated)
+
+    private static func performFindString(
+        _ query: String,
+        in document: PDFDocument,
+        options: NSString.CompareOptions
+    ) async -> [PDFSelection] {
+        await withCheckedContinuation { continuation in
+            searchQueue.async {
+                continuation.resume(returning: document.findString(query, withOptions: options))
+            }
+        }
+    }
+
     var currentMatch: PDFSearchMatch? {
         guard let currentMatchIndex, searchMatches.indices.contains(currentMatchIndex) else { return nil }
         return searchMatches[currentMatchIndex]
     }
 
-    /// Synchronous search via `PDFDocument.findString(_:withOptions:)` —
-    /// fine for a single in-memory document of the size this app opens;
-    /// there's no need for PDFKit's async `beginFindString` + notification
-    /// pipeline here.
+    /// Pays `findString`'s one-time index-build cost early, off the main
+    /// thread. Call this the moment Find opens, before the user has typed
+    /// anything — searches for a string guaranteed not to appear in the
+    /// document (a UUID), so the scan still runs but there's essentially no
+    /// result set to build.
+    func prewarmSearchIndex() {
+        guard let document, !hasPrewarmedSearchIndex else { return }
+        hasPrewarmedSearchIndex = true
+        isSearching = true
+        Task {
+            _ = await Self.performFindString(UUID().uuidString, in: document, options: [])
+            isSearching = false
+        }
+    }
+
+    /// `searchRequestGeneration` guards against a slower, older search
+    /// finishing after a newer one and overwriting its results — the
+    /// debounce in `PDFFindBar` makes overlap unlikely, not impossible.
     func search(for query: String) {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchRequestGeneration += 1
+        let generation = searchRequestGeneration
+
         guard !trimmed.isEmpty, let document else {
             searchMatches = []
             currentMatchIndex = nil
+            isSearching = false
             searchStateVersion += 1
             return
         }
 
-        let selections = document.findString(trimmed, withOptions: [.caseInsensitive])
-        searchMatches = selections.compactMap { selection in
-            guard let page = selection.pages.first else { return nil }
-            let pageIndex = document.index(for: page)
-            guard pageIndex != NSNotFound else { return nil }
-            return PDFSearchMatch(
-                selection: selection,
-                text: selection.string ?? "",
-                pageIndex: pageIndex,
-                pageNumber: pageIndex + 1
-            )
+        isSearching = true
+        Task {
+            let selections = await Self.performFindString(trimmed, in: document, options: [.caseInsensitive])
+            guard generation == searchRequestGeneration else { return }
+
+            searchMatches = selections.compactMap { selection in
+                guard let page = selection.pages.first else { return nil }
+                let pageIndex = document.index(for: page)
+                guard pageIndex != NSNotFound else { return nil }
+                return PDFSearchMatch(
+                    selection: selection,
+                    text: selection.string ?? "",
+                    pageIndex: pageIndex,
+                    pageNumber: pageIndex + 1
+                )
+            }
+            currentMatchIndex = searchMatches.isEmpty ? nil : 0
+            isSearching = false
+            searchStateVersion += 1
         }
-        currentMatchIndex = searchMatches.isEmpty ? nil : 0
-        searchStateVersion += 1
     }
 
     func clearSearch() {
+        searchRequestGeneration += 1
         searchMatches = []
         currentMatchIndex = nil
+        isSearching = false
         searchStateVersion += 1
     }
 

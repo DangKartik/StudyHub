@@ -10,6 +10,7 @@ struct CoursesView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: CoursesViewModel
@@ -35,6 +36,7 @@ struct CoursesView: View {
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.courseRepository = courseRepository
@@ -46,6 +48,7 @@ struct CoursesView: View {
         self.activeRecallRepository = activeRecallRepository
         self.noteRepository = noteRepository
         self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
@@ -97,6 +100,7 @@ struct CoursesView: View {
                     activeRecallRepository: activeRecallRepository,
                     noteRepository: noteRepository,
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }
@@ -122,6 +126,7 @@ struct CoursesView: View {
                     course: courseForReadings,
                     readingRepository: readingRepository,
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }
@@ -137,6 +142,7 @@ struct CoursesView: View {
                     course: courseForResources,
                     resourceRepository: resourceRepository,
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }
@@ -172,6 +178,7 @@ struct CoursesView: View {
                     course: courseForNotes,
                     noteRepository: noteRepository,
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }

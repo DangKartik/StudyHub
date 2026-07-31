@@ -5,6 +5,7 @@ struct NoteFormView: View {
     let viewModel: NotesViewModel
     let note: Note?
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @Environment(\.dismiss) private var dismiss
@@ -110,6 +111,7 @@ struct NoteFormView: View {
                             viewModel.saveMarkup(data, for: attachmentForViewing)
                         },
                         bookmarkRepository: bookmarkRepository,
+                        pdfProgressRepository: pdfProgressRepository,
                         pdfService: pdfService
                     )
                 }

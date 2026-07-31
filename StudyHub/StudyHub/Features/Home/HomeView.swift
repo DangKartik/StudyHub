@@ -12,6 +12,7 @@ struct HomeView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: HomeViewModel
@@ -35,6 +36,7 @@ struct HomeView: View {
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.appState = appState
@@ -48,6 +50,7 @@ struct HomeView: View {
         self.activeRecallRepository = activeRecallRepository
         self.noteRepository = noteRepository
         self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: HomeViewModel(
             appState: appState,
@@ -112,6 +115,7 @@ struct HomeView: View {
                     activeRecallRepository: activeRecallRepository,
                     noteRepository: noteRepository,
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }
