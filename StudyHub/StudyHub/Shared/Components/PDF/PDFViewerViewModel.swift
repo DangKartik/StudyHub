@@ -13,6 +13,20 @@ struct PDFSearchMatch: Identifiable {
     let pageNumber: Int
 }
 
+/// One entry in a PDF's table of contents, recursively parsed from
+/// `PDFDocument.outlineRoot`'s `PDFOutline` tree. `level` is 0 for a
+/// top-level chapter, 1 for its sections, etc. — the tree structure itself
+/// (`children`) is preserved too, so a consumer can flatten-with-indent (as
+/// `PDFOutlineListView` does) or build real collapsible disclosure groups
+/// without re-parsing.
+struct PDFOutlineNode: Identifiable {
+    let id = UUID()
+    let title: String
+    let level: Int
+    let destination: PDFDestination?
+    let children: [PDFOutlineNode]
+}
+
 @MainActor
 @Observable
 final class PDFViewerViewModel {
@@ -25,6 +39,8 @@ final class PDFViewerViewModel {
 
     private(set) var bookmarks: [Bookmark] = []
     private(set) var bookmarkError: StudyHubError?
+
+    private(set) var outline: [PDFOutlineNode] = []
 
     private(set) var searchMatches: [PDFSearchMatch] = []
     private(set) var currentMatchIndex: Int?
@@ -99,6 +115,42 @@ final class PDFViewerViewModel {
             bookmarkError = error
         } catch {
             bookmarkError = PersistenceError.deleteFailed(underlying: error)
+        }
+    }
+
+    // MARK: Outline
+
+    var hasOutline: Bool { !outline.isEmpty }
+
+    /// Recursively parses `document.outlineRoot`'s `PDFOutline` tree once
+    /// into a plain `[PDFOutlineNode]` — call after `loadDocument()`. A nil
+    /// `outlineRoot` (most PDFs — outlines are optional) or a document with
+    /// no children just leaves `outline` empty, which the view treats as
+    /// "no contents available."
+    func loadOutline() {
+        guard let root = document?.outlineRoot else {
+            outline = []
+            return
+        }
+        outline = Self.children(of: root, level: 0)
+    }
+
+    /// Depth-capped defensively — `PDFOutline.h` documents the tree as
+    /// acyclic by contract, but that's the PDF author's responsibility, not
+    /// something PDFKit validates for us, and a malformed file shouldn't be
+    /// able to blow the stack.
+    private static func children(of outline: PDFOutline, level: Int) -> [PDFOutlineNode] {
+        guard level < 20 else { return [] }
+        return (0..<outline.numberOfChildren).compactMap { index -> PDFOutlineNode? in
+            guard let child = outline.child(at: index) else { return nil }
+            let title = child.label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !title.isEmpty else { return nil }
+            return PDFOutlineNode(
+                title: title,
+                level: level,
+                destination: child.destination,
+                children: children(of: child, level: level + 1)
+            )
         }
     }
 

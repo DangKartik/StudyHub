@@ -36,7 +36,13 @@ final class PDFNavigationCoordinator {
             object: pdfView,
             queue: .main
         ) { [weak self] _ in
-            self?.refreshCurrentPageIndex()
+            // `queue: .main` guarantees this runs on the main thread, but the
+            // closure itself isn't statically `@MainActor` — `assumeIsolated`
+            // is the correct, non-`await` bridge for a callback that's truly
+            // guaranteed to already be on the main actor's executor.
+            MainActor.assumeIsolated {
+                self?.refreshCurrentPageIndex()
+            }
         }
         refreshCurrentPageIndex()
     }
@@ -53,6 +59,12 @@ final class PDFNavigationCoordinator {
     func goToPage(index: Int) {
         guard let pdfView, let document = pdfView.document, let page = document.page(at: index) else { return }
         pdfView.go(to: page)
+    }
+
+    /// Navigates to an outline entry's destination (page + point + zoom, per
+    /// `PDFDestination`), used by the Contents/Outline sheet.
+    func goToDestination(_ destination: PDFDestination) {
+        pdfView?.go(to: destination)
     }
 
     /// Shows every search match at once (a subtle shared highlight) with the

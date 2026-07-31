@@ -39,6 +39,7 @@ struct PDFViewerView: View {
     @State private var isFindActive = false
     @State private var findQuery = ""
     @State private var isShowingBookmarks = false
+    @State private var isShowingOutline = false
 
     init(
         title: String,
@@ -182,6 +183,17 @@ struct PDFViewerView: View {
                 }
                 .accessibilityLabel("View Bookmarks")
             }
+            // Hidden entirely (not just disabled) when the PDF has no
+            // outline — nothing to show, so no icon to tap.
+            if viewModel.hasOutline {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingOutline = true
+                    } label: {
+                        Label("Contents", systemImage: "text.book.closed")
+                    }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     isMarkupActive.toggle()
@@ -208,6 +220,14 @@ struct PDFViewerView: View {
                 }
             )
         }
+        .sheet(isPresented: $isShowingOutline) {
+            PDFOutlineListView(outline: viewModel.outline) { node in
+                if let destination = node.destination {
+                    navigationCoordinator.goToDestination(destination)
+                }
+                isShowingOutline = false
+            }
+        }
         .onAppear {
             if viewModel.document == nil && viewModel.loadError == nil {
                 viewModel.loadDocument()
@@ -220,10 +240,12 @@ struct PDFViewerView: View {
                 markupCoordinator.loadStoredMarkup(initialMarkupData, document: viewModel.document)
             }
             viewModel.loadBookmarks()
+            viewModel.loadOutline()
         }
         .onChange(of: viewModel.document == nil) { _, isNil in
             if !isNil {
                 markupCoordinator.loadStoredMarkup(initialMarkupData, document: viewModel.document)
+                viewModel.loadOutline()
             }
         }
         .onChange(of: isMarkupActive) { wasActive, isActive in
@@ -333,6 +355,68 @@ private struct PDFBookmarkListView: View {
                 }
             }
             .navigationTitle("Bookmarks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Table of contents — a flattened, indented list of every `PDFOutlineNode`
+/// (chapters, sections, subsections), preserving hierarchy visually through
+/// leading padding proportional to `level` rather than nested
+/// `DisclosureGroup`s. Entries with no destination (outline items that carry
+/// only a `PDFAction`, which this doesn't handle) are shown but not tappable.
+private struct PDFOutlineListView: View {
+    let outline: [PDFOutlineNode]
+    let onSelect: (PDFOutlineNode) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private var flattenedOutline: [PDFOutlineNode] {
+        Self.flatten(outline)
+    }
+
+    private static func flatten(_ nodes: [PDFOutlineNode]) -> [PDFOutlineNode] {
+        nodes.flatMap { [$0] + flatten($0.children) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if outline.isEmpty {
+                    StudyHubEmptyState(
+                        icon: "text.book.closed",
+                        title: "No Contents Available",
+                        message: "This PDF doesn't include a table of contents."
+                    )
+                } else {
+                    List {
+                        ForEach(flattenedOutline, id: \.id) { node in
+                            let isNavigable = node.destination != nil
+
+                            Text(node.title)
+                                .lineLimit(2)
+                                .foregroundStyle(isNavigable ? Color.primary : Color.secondary)
+                                .padding(.leading, CGFloat(node.level) * 16)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    guard isNavigable else { return }
+                                    onSelect(node)
+                                }
+                                .accessibilityAddTraits(isNavigable ? .isButton : [])
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("Contents")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
