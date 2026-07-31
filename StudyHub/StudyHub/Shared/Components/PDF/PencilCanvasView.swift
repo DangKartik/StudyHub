@@ -28,7 +28,7 @@ private struct PDFPageMarkup: Codable {
 /// being discarded, and is what `exportMarkupData()` reads from at save
 /// time (every cached page, not just the currently visible one).
 @MainActor
-final class PDFMarkupCoordinator: NSObject, PDFPageOverlayViewProvider, PKCanvasViewDelegate {
+final class PDFMarkupCoordinator: NSObject, PDFPageOverlayViewProvider, PKCanvasViewDelegate, UIPencilInteractionDelegate {
     private weak var toolManager: PencilToolManager?
     private var onStrokeBegan: (() -> Void)?
     private var canvasesByPage: [ObjectIdentifier: PKCanvasView] = [:]
@@ -148,6 +148,15 @@ final class PDFMarkupCoordinator: NSObject, PDFPageOverlayViewProvider, PKCanvas
         // every stroke drawn on it) never has to know about zoom or scroll.
         canvas.frame = CGRect(origin: .zero, size: page.bounds(for: .mediaBox).size)
 
+        // Apple Pencil double-tap — attached per page-canvas (like
+        // `delegate`) since that's what actually receives the touch;
+        // `addInteraction` retains it for the canvas's lifetime, no separate
+        // storage needed. Squeeze is deliberately left unhandled, see the
+        // delegate method below.
+        let pencilInteraction = UIPencilInteraction()
+        pencilInteraction.delegate = self
+        canvas.addInteraction(pencilInteraction)
+
         let activeDocument = document ?? view.document
         if let activeDocument {
             let pageIndex = activeDocument.index(for: page)
@@ -188,4 +197,32 @@ final class PDFMarkupCoordinator: NSObject, PDFPageOverlayViewProvider, PKCanvas
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         toolManager?.refreshUndoState()
     }
+
+    // MARK: UIPencilInteractionDelegate
+
+    /// Double-tap on the side of the Pencil — toggles the eraser. Only the
+    /// non-deprecated `didReceiveTap:` is implemented (deployment target is
+    /// iOS 18, well past this method's iOS 17.5 minimum); per the header,
+    /// implementing it alone is sufficient — the deprecated
+    /// `pencilInteractionDidTap:` wouldn't be called anyway once this exists.
+    func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveTap tap: UIPencilInteraction.Tap) {
+        toolManager?.toggleEraser()
+        // `toggleEraser()` only mutates `PencilToolManager`'s own state —
+        // nothing on `PDFViewerView` itself changes, so SwiftUI never
+        // re-renders `PDFKitRepresentedView` and `updateUIView` (where
+        // `refreshTool()` normally runs) never fires. Regular toolbar taps
+        // only "work" today because they *also* incidentally touch
+        // `PDFViewerView`'s own `@State` (closing the settings panel, etc.)
+        // as a side effect, which is what actually triggers the re-render
+        // that pushes the new tool onto the canvas. A Pencil double-tap has
+        // no such side effect, so it needs to push the tool change directly.
+        refreshTool()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    // Deliberately no `pencilInteraction(_:didReceiveSqueeze:)` — squeeze is
+    // intentionally left unhandled so iPadOS's own default squeeze behavior
+    // (its contextual palette, which falls back to undo/redo when an app
+    // exposes no tools to it) keeps running, same as before any custom
+    // Pencil interaction existed here.
 }

@@ -21,7 +21,8 @@ enum ModelContainerFactory {
             StatisticsSnapshot.self,
             Attachment.self,
             CalendarEventReference.self,
-            Bookmark.self
+            Bookmark.self,
+            PDFProgress.self
         ])
 
         let configuration = ModelConfiguration(

@@ -21,6 +21,7 @@ final class AppContainer {
     let quoteRepository: any QuoteRepositoryProtocol
     let calendarRepository: any CalendarRepositoryProtocol
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     private let appLifecycleService: any AppLifecycleServicing
@@ -47,6 +48,7 @@ final class AppContainer {
         quoteRepository = QuoteRepository(modelContext: context)
         calendarRepository = CalendarRepository(modelContext: context)
         bookmarkRepository = BookmarkRepository(modelContext: context)
+        pdfProgressRepository = PDFProgressRepository(modelContext: context)
         pdfService = PDFService()
 
         appLifecycleService = AppLifecycleService(appState: appState, modelContainer: modelContainer)

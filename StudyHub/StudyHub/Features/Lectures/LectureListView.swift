@@ -4,6 +4,7 @@ struct LectureListView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: LectureViewModel
@@ -17,11 +18,13 @@ struct LectureListView: View {
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.activeRecallRepository = activeRecallRepository
         self.noteRepository = noteRepository
         self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: LectureViewModel(
             course: course,
@@ -80,6 +83,7 @@ struct LectureListView: View {
                     lecture: lectureForNotes,
                     noteRepository: noteRepository,
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }

@@ -14,6 +14,7 @@ struct RootView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     var body: some View {
@@ -31,6 +32,7 @@ struct RootView: View {
             activeRecallRepository: activeRecallRepository,
             noteRepository: noteRepository,
             bookmarkRepository: bookmarkRepository,
+            pdfProgressRepository: pdfProgressRepository,
             pdfService: pdfService
         )
     }

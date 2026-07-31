@@ -8,6 +8,11 @@ struct PDFFindBar: View {
     @Binding var query: String
     let matchCountText: String?
     let hasMatches: Bool
+    /// True while a search (including the Find-open index prewarm) is
+    /// running in the background — shown as a spinner in place of the
+    /// magnifying glass so a slow first search on a large PDF reads as
+    /// "working" instead of a silent freeze.
+    let isSearching: Bool
     let onSearch: () -> Void
     let onNext: () -> Void
     let onPrevious: () -> Void
@@ -17,20 +22,39 @@ struct PDFFindBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+            if isSearching {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+            }
 
             TextField("Find in PDF", text: $query)
                 .textFieldStyle(.plain)
                 .focused($isFieldFocused)
                 .onSubmit(onSearch)
-                // Searches on every keystroke, synchronously — no debounce
-                // Task in flight means there's nothing that can race or leave
-                // a stale result on screen. `PDFDocument.findString` runs to
-                // completion on the main actor before the next keystroke's
-                // call can start, so query changes are always reflected
-                // immediately and in order.
-                .onChange(of: query) { _, _ in onSearch() }
+                // Debounced — `PDFDocument.findString` is a synchronous,
+                // main-actor, full-document search; running it on every
+                // keystroke blocked the main thread long enough on larger
+                // PDFs to make the keyboard itself feel laggy while typing.
+                // `task(id:)` cancels the previous wait whenever `query`
+                // changes, so only a settled value actually triggers a
+                // search. Safe to debounce now (this was deliberately
+                // synchronous-per-keystroke before): correctness no longer
+                // depends on this timing, `PDFViewerViewModel.searchStateVersion`
+                // is what actually gates the highlight refresh, regardless
+                // of how long each search takes to run. Clearing the field
+                // still searches (clears results) immediately, no delay.
+                .task(id: query) {
+                    guard !query.isEmpty else {
+                        onSearch()
+                        return
+                    }
+                    try? await Task.sleep(for: .milliseconds(200))
+                    guard !Task.isCancelled else { return }
+                    onSearch()
+                }
 
             if let matchCountText {
                 Text(matchCountText)

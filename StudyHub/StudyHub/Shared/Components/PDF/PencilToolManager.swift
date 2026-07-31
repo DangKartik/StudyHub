@@ -26,7 +26,12 @@ final class PencilToolManager {
     private var settings: [PencilToolKind: PencilToolSettings] = [
         .pencil: PencilToolSettings(color: .black, width: 4, opacity: 1.0),
         .pen: PencilToolSettings(color: .blue, width: 5, opacity: 1.0),
-        .highlighter: PencilToolSettings(color: .yellow, width: 20, opacity: 1.0),
+        // Width 6 of the 1...20 thickness slider range (30%) — was 20 (100%,
+        // the slider's max), which made every highlighter stroke the
+        // thickest possible by default. Opacity 0.75 (75%, within the
+        // 0.1...1 slider range) — was 1.0 (fully opaque), which fully
+        // hid whatever text was underneath instead of just tinting it.
+        .highlighter: PencilToolSettings(color: .yellow, width: 6, opacity: 0.75),
         // Eraser only ever reads `width` (via `PKEraserTool(_:width:)`) —
         // color/opacity here are unused placeholders, kept only so it can
         // share the same settings storage as the ink tools. Starts at
@@ -68,9 +73,28 @@ final class PencilToolManager {
         selectedTool.makePKTool(color: selectedColor, thickness: thickness, opacity: opacity)
     }
 
+    /// Which tool was active immediately before an Apple Pencil Pro
+    /// double-tap switched to the eraser, so a second double-tap can
+    /// switch back to it.
+    private var toolBeforeEraserToggle: PencilToolKind?
+
     func attach(_ canvasView: PKCanvasView) {
         self.canvasView = canvasView
         refreshUndoState()
+    }
+
+    /// Apple Pencil Pro double-tap action — quickly switch to the eraser
+    /// and back to whatever was selected before, without reaching for the
+    /// toolbar. Mirrors the system's own "Switch Between Current Tool and
+    /// Eraser" preference (`UIPencilPreferredActionSwitchEraser`).
+    func toggleEraser() {
+        if selectedTool == .eraser {
+            selectedTool = toolBeforeEraserToggle ?? .pen
+            toolBeforeEraserToggle = nil
+        } else {
+            toolBeforeEraserToggle = selectedTool
+            selectedTool = .eraser
+        }
     }
 
     func undo() {

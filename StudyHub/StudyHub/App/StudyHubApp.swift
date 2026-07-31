@@ -22,6 +22,7 @@ struct StudyHubApp: App {
                 activeRecallRepository: container.activeRecallRepository,
                 noteRepository: container.noteRepository,
                 bookmarkRepository: container.bookmarkRepository,
+                pdfProgressRepository: container.pdfProgressRepository,
                 pdfService: container.pdfService
             )
         }

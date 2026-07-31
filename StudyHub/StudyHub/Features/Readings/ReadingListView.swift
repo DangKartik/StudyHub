@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ReadingListView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: ReadingViewModel
@@ -13,13 +14,16 @@ struct ReadingListView: View {
         course: Course,
         readingRepository: any ReadingRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: ReadingViewModel(
             course: course,
-            readingRepository: readingRepository
+            readingRepository: readingRepository,
+            pdfProgressRepository: pdfProgressRepository
         ))
     }
 
@@ -48,9 +52,9 @@ struct ReadingListView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .create:
-                ReadingFormView(viewModel: viewModel, reading: nil, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
+                ReadingFormView(viewModel: viewModel, reading: nil, bookmarkRepository: bookmarkRepository, pdfProgressRepository: pdfProgressRepository, pdfService: pdfService)
             case .edit(let reading):
-                ReadingFormView(viewModel: viewModel, reading: reading, bookmarkRepository: bookmarkRepository, pdfService: pdfService)
+                ReadingFormView(viewModel: viewModel, reading: reading, bookmarkRepository: bookmarkRepository, pdfProgressRepository: pdfProgressRepository, pdfService: pdfService)
             }
         }
         .navigationDestination(isPresented: Binding(
@@ -70,9 +74,6 @@ struct ReadingListView: View {
                             readingForPDFViewing,
                             title: readingForPDFViewing.title,
                             author: readingForPDFViewing.author,
-                            pageCount: readingForPDFViewing.pageCount,
-                            currentPage: readingForPDFViewing.currentPage,
-                            estimatedMinutes: readingForPDFViewing.estimatedMinutes,
                             dueDate: readingForPDFViewing.dueDate,
                             notes: newNotes
                         )
@@ -81,6 +82,7 @@ struct ReadingListView: View {
                         viewModel.saveMarkup(data, for: attachment)
                     },
                     bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService
                 )
             }
@@ -100,7 +102,11 @@ struct ReadingListView: View {
             }
 
             ForEach(viewModel.readings, id: \.id) { reading in
-                ReadingRowView(reading: reading, attachment: primaryAttachment(for: reading))
+                ReadingRowView(
+                    reading: reading,
+                    attachment: primaryAttachment(for: reading),
+                    progress: viewModel.progress(for: reading)
+                )
                     .contentShape(Rectangle())
                     .onTapGesture {
                         handleTap(on: reading)
@@ -173,6 +179,11 @@ private enum ReadingSheet: Identifiable {
 private struct ReadingRowView: View {
     let reading: Reading
     let attachment: Attachment?
+    /// Automatically derived from the PDF's own tracked position — `nil`
+    /// for a non-PDF attachment or a PDF that's never been opened, both of
+    /// which mean "nothing to show" (Goal 6: no progress for non-paginated
+    /// content).
+    let progress: (pageIndex: Int, pageCount: Int)?
 
     var body: some View {
         HStack {
@@ -214,9 +225,10 @@ private struct ReadingRowView: View {
         )
     }
 
+    /// `pageIndex` is 0-based, so page 1 of N is `(0 + 1) / N`, not `0 / N`.
     private var progressPercent: Int? {
-        guard reading.pageCount > 0 else { return nil }
-        return Int((Double(reading.currentPage) / Double(reading.pageCount) * 100).rounded())
+        guard let progress, progress.pageCount > 0 else { return nil }
+        return Int((Double(progress.pageIndex + 1) / Double(progress.pageCount) * 100).rounded())
     }
 
     /// The row never hides an attachment behind a tap-and-see interaction —
