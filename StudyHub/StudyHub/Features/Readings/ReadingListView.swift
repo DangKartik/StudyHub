@@ -70,6 +70,9 @@ struct ReadingListView: View {
                             notes: newNotes
                         )
                     },
+                    onMarkupSave: { data in
+                        viewModel.saveMarkup(data, for: attachment)
+                    },
                     pdfService: pdfService
                 )
             }

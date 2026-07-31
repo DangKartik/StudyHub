@@ -85,6 +85,10 @@ struct ResourceListView: View {
                             notes: newNotes
                         )
                     },
+                    initialMarkupData: resourceForPDFViewing.markupData,
+                    onMarkupSave: { data in
+                        viewModel.saveMarkup(data, for: resourceForPDFViewing)
+                    },
                     pdfService: pdfService
                 )
             }

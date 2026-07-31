@@ -208,4 +208,17 @@ final class NotesViewModel {
             loadError = PersistenceError.deleteFailed(underlying: error)
         }
     }
+
+    /// Persists a PDF's PencilKit markup (Phase 3N.6.4) — no list reload
+    /// needed, since markup data isn't shown in any Note row.
+    func saveMarkup(_ data: Data, for attachment: Attachment) {
+        attachment.markupData = data
+        do {
+            try noteRepository.save()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
 }

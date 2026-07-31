@@ -99,6 +99,9 @@ struct NotesListView: View {
                             viewModel.updateNote(noteForPDFViewing, title: noteForPDFViewing.title, body: newBody)
                         }
                     },
+                    onMarkupSave: { data in
+                        viewModel.saveMarkup(data, for: attachmentForViewing)
+                    },
                     pdfService: pdfService
                 )
             }
