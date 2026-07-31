@@ -12,6 +12,8 @@ struct NoteFormView: View {
 
     @State private var title: String = ""
     @State private var noteBody: String = ""
+    @State private var contentMode: ContentMode = .edit
+    @State private var markdownEditorController = NoteMarkdownEditorController()
     @State private var tags: [String] = []
     @State private var newTagText: String = ""
     @State private var selectedLecture: Lecture?
@@ -20,6 +22,11 @@ struct NoteFormView: View {
     @State private var attachmentForViewing: Attachment?
     @State private var attachmentError: StudyHubError?
     @State private var didSaveNote = false
+
+    private enum ContentMode: Hashable {
+        case edit
+        case preview
+    }
 
     private var isEditing: Bool {
         note != nil
@@ -34,12 +41,12 @@ struct NoteFormView: View {
             Form {
                 Section("Title") {
                     TextField("Title", text: $title)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .padding(.vertical, 4)
                 }
 
-                Section("Note") {
-                    TextEditor(text: $noteBody)
-                        .frame(minHeight: 150)
-                }
+                contentSection
 
                 tagsSection
 
@@ -176,6 +183,49 @@ struct NoteFormView: View {
         for attachment in pendingAttachments where attachment.type == AttachmentKind.pdf.rawValue {
             AttachmentFileImporter.deleteTemporaryFile(at: attachment.url)
         }
+    }
+
+    /// Replaces the old plain TextEditor with a Markdown-formatted editor
+    /// (headings/bold/italic/lists/checklists/code blocks) plus an
+    /// Edit/Preview toggle — see DECISION-033 for why formatting is stored
+    /// as Markdown text in `body: String` rather than rich-text data.
+    @ViewBuilder
+    private var contentSection: some View {
+        Section("Content") {
+            Picker("Mode", selection: $contentMode) {
+                Text("Edit").tag(ContentMode.edit)
+                Text("Preview").tag(ContentMode.preview)
+            }
+            .pickerStyle(.segmented)
+            .padding(.bottom, 4)
+
+            if contentMode == .edit {
+                NoteMarkdownToolbar(controller: markdownEditorController)
+                NoteMarkdownEditor(text: $noteBody, controller: markdownEditorController)
+                    .frame(minHeight: 220)
+            } else {
+                ScrollView {
+                    NoteMarkdownRenderer(markdown: noteBody, onToggleChecklist: toggleChecklist)
+                        .padding(.vertical, 8)
+                }
+                .frame(minHeight: 220)
+            }
+        }
+    }
+
+    /// Flips `[ ]`/`[x]` on the given source line — called when a checklist
+    /// item is tapped in Preview mode.
+    private func toggleChecklist(atLine lineIndex: Int) {
+        var lines = noteBody.components(separatedBy: "\n")
+        guard lines.indices.contains(lineIndex) else { return }
+
+        if lines[lineIndex].hasPrefix("- [ ] ") {
+            lines[lineIndex] = "- [x] " + lines[lineIndex].dropFirst(6)
+        } else if lines[lineIndex].hasPrefix("- [x] ") || lines[lineIndex].hasPrefix("- [X] ") {
+            lines[lineIndex] = "- [ ] " + lines[lineIndex].dropFirst(6)
+        }
+
+        noteBody = lines.joined(separator: "\n")
     }
 
     @ViewBuilder

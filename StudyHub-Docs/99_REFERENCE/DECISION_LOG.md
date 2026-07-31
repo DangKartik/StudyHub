@@ -2556,6 +2556,82 @@ No change to Course/Lecture cascade behavior — this decision is scoped to the 
 
 ---
 
+# DECISION-033
+
+## Decision
+
+`Note.body` continues to store a plain `String` — no new field, no model change. Rich formatting (headings, bold, italic, bullet/numbered/checklist lists, code blocks) is represented as Markdown syntax *within* that same string, not as `AttributedString`/`NSAttributedString`/binary rich-text data.
+
+---
+
+## Context
+
+Phase 3.2 upgrades Note creation/editing from a plain `TextEditor` to a formatted writing experience. Before touching any UI, the underlying storage question had to be settled: keep `body: String` and encode formatting as Markdown text, or introduce a new rich-text-capable field (`AttributedString`, encoded `NSAttributedString` data, or similar) to store real style runs.
+
+---
+
+## Options Considered
+
+### Store rich text (AttributedString / encoded NSAttributedString data)
+
+Pros:
+
+```
+Native SwiftUI rendering via Text(AttributedString) without a custom parser
+Precise, WYSIWYG-faithful style representation (exact fonts, colors, ranges)
+```
+
+Cons:
+
+```
+Requires a Note model change (new field, or replacing body's type) — the only option of the two with any migration surface at all
+AttributedString's Codable encoding is not designed as a long-term storage/interchange format — decoding across app/OS versions is a real compatibility risk this project has no precedent for handling
+Opaque to future full-text search — DECISION-031's NotesViewModel.displayedNotes search already does plain localizedStandardContains on title/body; searching inside encoded rich-text data would need extraction logic that doesn't exist
+Opaque to future AI processing — an LLM prompt needs plain text/Markdown; attributed runs would need conversion back to text anyway, making the rich storage a detour, not a shortcut
+Larger, more fragile CloudKit sync payloads (opaque encoded blobs) compared to a plain String field, which is one of CloudKit's most straightforward supported types
+```
+
+---
+
+### Store Markdown-formatted plain text in the existing `body: String` field
+
+Pros:
+
+```
+Zero model change — Note.body is already String, so there is nothing to migrate at all, the strongest possible answer to "avoid destructive migration"
+Trivially CloudKit-compatible — a plain String field is already proven to sync correctly (Note.body already does today)
+Directly searchable today — DECISION-031's existing search (title/body localizedStandardContains) keeps working with no changes, since Markdown text is still plain text
+Directly consumable by a future AI phase — Markdown is a first-class, well-understood format for LLM prompts and output, no conversion step needed
+Human-readable and debuggable in the database, in logs, and in any future export/backup feature
+```
+
+Cons:
+
+```
+Requires writing a small, app-owned Markdown parser/renderer for the block-level constructs (headings, lists, checklists, code blocks) that SwiftUI's own AttributedString(markdown:) parser only handles for inline text (bold/italic/code spans), not block structure
+Not visually WYSIWYG while actively editing raw syntax — mitigated by an Edit/Preview toggle rather than true inline rendering
+```
+
+---
+
+## Decision Reasoning
+
+Every criterion in scope — SwiftData compatibility, future search, future AI processing, and CloudKit compatibility — favors Markdown-in-`String`, and it is also the only option with zero migration risk, since `Note.body` is already a `String` today. The one real cost (writing a small block-level Markdown renderer) is a one-time, contained UI investment, not an ongoing architectural liability, and stays entirely within Apple-native APIs (`AttributedString(markdown:)` for inline runs, plain `UITextView`/TextKit for editing) with no third-party dependency.
+
+---
+
+## Impact
+
+```
+No SwiftData model change — Note.body remains String, exactly as it is today
+No migration plan needed — existing notes' plain-text bodies remain valid Markdown (plain text is valid Markdown with no block syntax) and render correctly in the new Preview mode unchanged
+CloudKit compatibility is unaffected — the synced field's type and semantics don't change
+NoteFormView.swift replaces its plain TextEditor with a custom TextKit-backed editor (NoteMarkdownEditor.swift) plus a formatting toolbar and a Preview renderer (NoteMarkdownRenderer.swift), both scoped to Features/Notes
+The supported Markdown subset is intentionally bounded to what the toolbar itself writes (headings, bold, italic, bullet/numbered/checklist lists, fenced code blocks) — not a general CommonMark implementation
+```
+
+---
+
 # Decision Index
 
 ```
@@ -2717,6 +2793,11 @@ Note Ownership Exclusivity — Course, Lecture, or Reading
 DECISION-032
 
 Reading Deletion Nullifies, Does Not Cascade, Notes
+
+
+DECISION-033
+
+Note Body Stays Markdown-in-String, Not Rich Text
 ```
 
 ---
