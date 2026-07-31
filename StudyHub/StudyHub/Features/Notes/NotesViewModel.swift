@@ -169,10 +169,11 @@ final class NotesViewModel {
     /// (see Phase 3N.4 Part 3) — it's finalized into permanent storage here,
     /// only once the note is actually being saved, before being linked and
     /// saved via the same `createAttachment(_:for:)` path `addAttachment` uses.
-    func createNote(title: String, body: String, lecture: Lecture? = nil, attachments: [Attachment] = []) {
+    func createNote(title: String, body: String, lecture: Lecture? = nil, tags: [String] = [], attachments: [Attachment] = []) {
         guard supportsCreation else { return }
 
         let note = Note(title: title, body: body)
+        note.tags = tags
         switch scope {
         case .course(let course):
             if let lecture {
@@ -202,9 +203,16 @@ final class NotesViewModel {
         }
     }
 
-    func updateNote(_ note: Note, title: String, body: String) {
+    /// `tags`, when provided, replaces the note's tags entirely; `nil` (the
+    /// default) leaves them unchanged — used by call sites that only edit
+    /// title/body (e.g. the PDF summary editor) so they don't need to know
+    /// or re-supply the current tag list just to save an unrelated edit.
+    func updateNote(_ note: Note, title: String, body: String, tags: [String]? = nil) {
         note.title = title
         note.body = body
+        if let tags {
+            note.tags = tags
+        }
         note.updatedAt = Date.now
 
         do {

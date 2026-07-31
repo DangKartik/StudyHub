@@ -112,13 +112,14 @@ struct NotesListView: View {
                     }
                     .pickerStyle(.inline)
                     if !viewModel.allTags.isEmpty {
+                        // Deliberately not .pickerStyle(.inline) — Tag stays a
+                        // nested "Tag ›" submenu, unlike Filter/Sort above.
                         Picker("Tag", selection: $selectedTag) {
                             Text("All Tags").tag(String?.none)
                             ForEach(viewModel.allTags, id: \.self) { tag in
                                 Text(tag).tag(String?.some(tag))
                             }
                         }
-                        .pickerStyle(.inline)
                     }
                 } label: {
                     Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
@@ -310,9 +311,15 @@ private struct NoteRowView: View {
         return parts.joined(separator: " · ")
     }
 
+    /// Full tag text used only for the accessibility label — the visible row
+    /// shows compact chips instead (see `body`).
     private var tagsText: String? {
         note.tags.isEmpty ? nil : note.tags.joined(separator: ", ")
     }
+
+    /// Caps visible chips so a heavily-tagged note doesn't blow out row
+    /// height; the remainder collapses into a "+N" chip.
+    private static let maxVisibleTags = 4
 
     var body: some View {
         HStack {
@@ -326,10 +333,15 @@ private struct NoteRowView: View {
                 Text(metadataText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if let tagsText {
-                    Text(tagsText)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                if !note.tags.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(note.tags.prefix(Self.maxVisibleTags), id: \.self) { tag in
+                            NoteRowTagChip(text: tag)
+                        }
+                        if note.tags.count > Self.maxVisibleTags {
+                            NoteRowTagChip(text: "+\(note.tags.count - Self.maxVisibleTags)")
+                        }
+                    }
                 }
             }
 
@@ -347,5 +359,20 @@ private struct NoteRowView: View {
             (tagsText.map { " Tags: \($0)." } ?? "") +
             (note.attachments.isEmpty ? "" : " Has attachments.")
         )
+    }
+}
+
+/// Compact, read-only tag chip for a Notes row — no tap/remove affordance,
+/// unlike NoteFormView's editable `NoteTagChip`.
+private struct NoteRowTagChip: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption2)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .foregroundStyle(Color.accentColor)
+            .background(Color.accentColor.opacity(0.15), in: Capsule())
     }
 }

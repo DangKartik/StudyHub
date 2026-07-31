@@ -12,6 +12,8 @@ struct NoteFormView: View {
 
     @State private var title: String = ""
     @State private var noteBody: String = ""
+    @State private var tags: [String] = []
+    @State private var newTagText: String = ""
     @State private var selectedLecture: Lecture?
     @State private var pendingAttachments: [Attachment] = []
     @State private var isAddingAttachment = false
@@ -39,6 +41,8 @@ struct NoteFormView: View {
                         .frame(minHeight: 150)
                 }
 
+                tagsSection
+
                 if !isEditing && viewModel.isCourseScope {
                     Section("Attach To") {
                         Picker("Lecture", selection: $selectedLecture) {
@@ -62,13 +66,14 @@ struct NoteFormView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         if let note {
-                            viewModel.updateNote(note, title: title, body: noteBody)
+                            viewModel.updateNote(note, title: title, body: noteBody, tags: tags)
                         } else {
                             didSaveNote = true
                             viewModel.createNote(
                                 title: title,
                                 body: noteBody,
                                 lecture: selectedLecture,
+                                tags: tags,
                                 attachments: pendingAttachments
                             )
                         }
@@ -133,6 +138,7 @@ struct NoteFormView: View {
                 if let note {
                     title = note.title
                     noteBody = note.body
+                    tags = note.tags
                 }
             }
             .onDisappear {
@@ -170,6 +176,52 @@ struct NoteFormView: View {
         for attachment in pendingAttachments where attachment.type == AttachmentKind.pdf.rawValue {
             AttachmentFileImporter.deleteTemporaryFile(at: attachment.url)
         }
+    }
+
+    @ViewBuilder
+    private var tagsSection: some View {
+        Section("Tags") {
+            if !tags.isEmpty {
+                TagFlowLayout(spacing: 8) {
+                    ForEach(tags, id: \.self) { tag in
+                        NoteTagChip(text: tag, onTap: { beginEditingTag(tag) }, onRemove: { removeTag(tag) })
+                    }
+                }
+            }
+
+            HStack {
+                TextField("Add Tag", text: $newTagText)
+                    .onSubmit(commitNewTag)
+                Button(action: commitNewTag) {
+                    Image(systemName: "plus.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                .disabled(newTagText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+    }
+
+    /// Trims, rejects empty input, and rejects a case-insensitive duplicate
+    /// of an already-added tag before appending.
+    private func commitNewTag() {
+        let trimmed = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
+        newTagText = ""
+        guard !trimmed.isEmpty else { return }
+        guard !tags.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else { return }
+        tags.append(trimmed)
+    }
+
+    private func removeTag(_ tag: String) {
+        tags.removeAll { $0 == tag }
+    }
+
+    /// Tapping a chip's text (not its remove button) moves it back into the
+    /// add-tag field for editing — removing it from the list and prefilling
+    /// the input, so retyping and submitting replaces it.
+    private func beginEditingTag(_ tag: String) {
+        removeTag(tag)
+        newTagText = tag
     }
 
     @ViewBuilder
@@ -222,6 +274,82 @@ struct NoteFormView: View {
             .swipeActions(edge: .trailing) {
                 Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
             }
+    }
+}
+
+/// An editable tag chip — tapping the label re-opens it for editing (see
+/// `NoteFormView.beginEditingTag`), tapping the "x" removes it outright.
+private struct NoteTagChip: View {
+    let text: String
+    let onTap: () -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.subheadline)
+                .onTapGesture(perform: onTap)
+
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .foregroundStyle(Color.accentColor)
+        .background(Color.accentColor.opacity(0.15), in: Capsule())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
+        .accessibilityAction(named: "Edit", onTap)
+        .accessibilityAction(named: "Remove", onRemove)
+    }
+}
+
+/// Simple wrapping row layout for tag chips — lets them flow left-to-right
+/// and wrap to a new line when they run out of horizontal space, matching
+/// the "[Machine Learning] [Exam Prep]" chip-cloud style rather than a
+/// single scrolling row.
+private struct TagFlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var rowWidth: CGFloat = 0
+        var totalHeight: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if rowWidth > 0, rowWidth + spacing + size.width > maxWidth {
+                totalHeight += rowHeight + spacing
+                rowWidth = 0
+                rowHeight = 0
+            }
+            rowWidth += (rowWidth > 0 ? spacing : 0) + size.width
+            rowHeight = max(rowHeight, size.height)
+        }
+        totalHeight += rowHeight
+        return CGSize(width: maxWidth.isFinite ? maxWidth : rowWidth, height: totalHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
 
