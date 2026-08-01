@@ -191,7 +191,13 @@ struct NoteMarkdownEditor: UIViewRepresentable {
         /// concealed, since unlike `**`/`#` they carry information a fully
         /// rendered line still needs (that this is a list item, which
         /// number).
-        static func styledAttributedString(from text: String, activeRange: NSRange) -> NSAttributedString {
+        /// `activeRange` is `nil` for a pure read-only preview (e.g.
+        /// `NoteMarkdownPreview`) — with no cursor at all, no line should
+        /// ever be treated as "active"/raw, so every line renders fully
+        /// formatted. `NSNotFound` as the sentinel location makes every
+        /// real line-range comparison below false without special-casing
+        /// the nil branch throughout the rest of this function.
+        static func styledAttributedString(from text: String, activeRange: NSRange?) -> NSAttributedString {
             let bodyFont = UIFont.preferredFont(forTextStyle: .body)
             let result = NSMutableAttributedString(
                 string: text,
@@ -200,7 +206,7 @@ struct NoteMarkdownEditor: UIViewRepresentable {
 
             let nsText = text as NSString
             let fullRange = NSRange(location: 0, length: nsText.length)
-            let activeLineRange = nsText.lineRange(for: activeRange)
+            let activeLineRange: NSRange = activeRange.map { nsText.lineRange(for: $0) } ?? NSRange(location: NSNotFound, length: 0)
 
             var lineRanges: [NSRange] = []
             nsText.enumerateSubstrings(in: fullRange, options: .byLines) { _, lineRange, _, _ in

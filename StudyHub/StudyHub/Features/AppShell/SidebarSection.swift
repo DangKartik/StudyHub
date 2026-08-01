@@ -9,7 +9,7 @@ struct SidebarSection: Identifiable {
 extension SidebarSection {
     static let all: [SidebarSection] = [
         SidebarSection(id: "primary", title: nil, destinations: [.home, .courses, .calendar]),
-        SidebarSection(id: "learning", title: "Learning", destinations: [.studyMode, .flashcards, .notes, .resources]),
+        SidebarSection(id: "learning", title: "Learning", destinations: [.studyMode, .flashcards, .activeRecall, .notes, .resources]),
         SidebarSection(id: "analytics", title: "Analytics", destinations: [.statistics]),
         SidebarSection(id: "system", title: nil, destinations: [.search, .settings])
     ]

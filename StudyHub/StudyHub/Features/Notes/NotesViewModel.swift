@@ -225,6 +225,35 @@ final class NotesViewModel {
         }
     }
 
+    /// Re-links an existing note between the scope's Course directly and one
+    /// of its Lectures — only meaningful (and only ever called) from
+    /// `.course` scope, where a note is guaranteed to already be Course- or
+    /// Lecture-owned, never Reading-owned (see
+    /// `NoteRepository.fetch(forCourseIncludingLectures:)`). `lecture: nil`
+    /// means "Course Only"; exactly one of `note.course`/`note.lecture` is
+    /// ever set afterward, preserving DECISION-031's single-owner rule.
+    func updateNoteOwnership(_ note: Note, lecture: Lecture?) {
+        guard case .course(let course) = scope else { return }
+
+        if let lecture {
+            note.lecture = lecture
+            note.course = nil
+        } else {
+            note.course = course
+            note.lecture = nil
+        }
+        note.updatedAt = Date.now
+
+        do {
+            try noteRepository.save()
+            loadNotes()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
+
     func deleteNote(_ note: Note) {
         do {
             try noteRepository.delete(note)

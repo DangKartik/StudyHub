@@ -20,6 +20,7 @@ struct StudyHubApp: App {
                 resourceRepository: container.resourceRepository,
                 flashcardRepository: container.flashcardRepository,
                 activeRecallRepository: container.activeRecallRepository,
+                studySessionRepository: container.studySessionRepository,
                 noteRepository: container.noteRepository,
                 bookmarkRepository: container.bookmarkRepository,
                 pdfProgressRepository: container.pdfProgressRepository,

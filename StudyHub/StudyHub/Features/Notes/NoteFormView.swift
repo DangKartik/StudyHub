@@ -294,7 +294,8 @@ struct NoteFormView: View {
 
 /// An editable tag chip — tapping the label re-opens it for editing (see
 /// `NoteFormView.beginEditingTag`), tapping the "x" removes it outright.
-private struct NoteTagChip: View {
+/// Not `private` — also reused by `NoteDetailView`'s inline tag editor.
+struct NoteTagChip: View {
     let text: String
     let onTap: () -> Void
     let onRemove: () -> Void
@@ -325,8 +326,8 @@ private struct NoteTagChip: View {
 /// Simple wrapping row layout for tag chips — lets them flow left-to-right
 /// and wrap to a new line when they run out of horizontal space, matching
 /// the "[Machine Learning] [Exam Prep]" chip-cloud style rather than a
-/// single scrolling row.
-private struct TagFlowLayout: Layout {
+/// single scrolling row. Not `private` — also reused by `NoteDetailView`.
+struct TagFlowLayout: Layout {
     var spacing: CGFloat = 8
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -418,7 +419,9 @@ enum AttachmentKind: String, CaseIterable {
     }
 }
 
-private struct AttachmentFormView: View {
+/// Not `private` — also reused by `NoteBodyEditorView`'s "Add Attachment"
+/// action.
+struct AttachmentFormView: View {
     /// Called with (filename, type rawValue, value) when the user taps Add.
     /// For `.pdf`, `value` is a *temporary* staged file path, not yet
     /// permanent — the caller decides when (or whether) to finalize it. Every

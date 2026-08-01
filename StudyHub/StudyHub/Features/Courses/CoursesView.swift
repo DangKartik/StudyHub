@@ -21,6 +21,7 @@ struct CoursesView: View {
     @State private var courseForResources: Course?
     @State private var courseForGrades: Course?
     @State private var courseForFlashcards: Course?
+    @State private var courseForActiveRecall: Course?
     @State private var courseForNotes: Course?
     @Environment(\.openURL) private var openURL
 
@@ -98,6 +99,7 @@ struct CoursesView: View {
                     course: courseForLectures,
                     lectureRepository: lectureRepository,
                     activeRecallRepository: activeRecallRepository,
+                    flashcardRepository: flashcardRepository,
                     noteRepository: noteRepository,
                     bookmarkRepository: bookmarkRepository,
                     pdfProgressRepository: pdfProgressRepository,
@@ -164,7 +166,30 @@ struct CoursesView: View {
             }
         )) {
             if let courseForFlashcards {
-                FlashcardListView(course: courseForFlashcards, flashcardRepository: flashcardRepository)
+                FlashcardListView(
+                    course: courseForFlashcards,
+                    noteRepository: noteRepository,
+                    lectureRepository: lectureRepository,
+                    flashcardRepository: flashcardRepository,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
+                    pdfService: pdfService
+                )
+            }
+        }
+        .navigationDestination(isPresented: Binding(
+            get: { courseForActiveRecall != nil },
+            set: { isPresented in
+                if !isPresented { courseForActiveRecall = nil }
+            }
+        )) {
+            if let courseForActiveRecall {
+                ActiveRecallListView(
+                    course: courseForActiveRecall,
+                    activeRecallRepository: activeRecallRepository,
+                    noteRepository: noteRepository,
+                    flashcardRepository: flashcardRepository
+                )
             }
         }
         .navigationDestination(isPresented: Binding(
@@ -225,6 +250,7 @@ struct CoursesView: View {
                             onViewResources: { courseForResources = course },
                             onViewGrades: { courseForGrades = course },
                             onViewFlashcards: { courseForFlashcards = course },
+                            onViewActiveRecall: { courseForActiveRecall = course },
                             onViewNotes: { courseForNotes = course }
                         )
                         .contentShape(Rectangle())
@@ -263,6 +289,7 @@ struct CoursesView: View {
             onViewResources: { courseForResources = course },
             onViewGrades: { courseForGrades = course },
             onViewFlashcards: { courseForFlashcards = course },
+            onViewActiveRecall: { courseForActiveRecall = course },
             onViewNotes: { courseForNotes = course }
         )
         .contentShape(Rectangle())
@@ -309,6 +336,7 @@ private struct CourseRowView: View {
     var onViewResources: (() -> Void)? = nil
     var onViewGrades: (() -> Void)? = nil
     var onViewFlashcards: (() -> Void)? = nil
+    var onViewActiveRecall: (() -> Void)? = nil
     var onViewNotes: (() -> Void)? = nil
 
     @Environment(\.openURL) private var openURL
@@ -409,6 +437,15 @@ private struct CourseRowView: View {
                 .buttonStyle(.bordered)
                 .font(.caption)
                 .accessibilityLabel("View flashcards for \(course.name).")
+            }
+
+            if let onViewActiveRecall {
+                Button(action: onViewActiveRecall) {
+                    Label("Active Recall", systemImage: "brain.head.profile")
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                .accessibilityLabel("View active recall questions for \(course.name).")
             }
 
             if let onViewNotes {

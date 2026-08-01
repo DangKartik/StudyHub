@@ -19,6 +19,17 @@ final class Flashcard {
 
     var course: Course?
     var lecture: Lecture?
+    /// Phase 4.1 (DECISION-034) — optional link to the Note this card was
+    /// derived from, if any. Inverse: `Note.linkedFlashcards`, `.nullify`.
+    var note: Note?
+
+    /// Active Recall questions derived from this Flashcard (Phase 4.2,
+    /// DECISION-035) — completes the Question -> Flashcard -> Note -> Course
+    /// chain without Flashcard needing to know about ActiveRecallQuestion
+    /// directly (the relationship is declared, with its `.nullify` delete
+    /// rule, on `ActiveRecallQuestion.flashcard`'s inverse).
+    @Relationship(deleteRule: .nullify, inverse: \ActiveRecallQuestion.flashcard)
+    var linkedActiveRecallQuestions: [ActiveRecallQuestion] = []
 
     init(
         id: UUID = UUID(),

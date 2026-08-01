@@ -13,10 +13,22 @@ final class StudySession {
 
     var semester: Semester?
 
-    @Relationship(inverse: \Course.studySessions)
-    var courses: [Course] = []
+    /// Phase 4.3 (DECISION-037) — singular, optional, matching the actual
+    /// "pick one Course, optionally one Lecture" Study Mode flow. Replaces
+    /// the original `courses: [Course]` many-to-many, which had zero
+    /// consumers and didn't represent this shape at all.
+    var course: Course?
+    var lecture: Lecture?
 
-    var flashcardsReviewed: [Flashcard] = []
+    /// Session-scoped tallies (Phase 4.3) — StudySession orchestrates and
+    /// counts, it doesn't own the reviewed content itself. Flashcard/
+    /// ActiveRecallQuestion already track their own review history
+    /// (reviewCount/lastReviewed/difficulty, DECISION-034/035); these are
+    /// just how many of those actions happened during *this* session.
+    var flashcardsReviewedCount: Int = 0
+    var questionsAnsweredCount: Int = 0
+    var pagesReadCount: Int = 0
+    var notesOpenedCount: Int = 0
 
     init(
         id: UUID = UUID(),

@@ -12,6 +12,7 @@ struct RootView: View {
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
+    let studySessionRepository: any StudySessionRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
@@ -30,6 +31,7 @@ struct RootView: View {
             resourceRepository: resourceRepository,
             flashcardRepository: flashcardRepository,
             activeRecallRepository: activeRecallRepository,
+            studySessionRepository: studySessionRepository,
             noteRepository: noteRepository,
             bookmarkRepository: bookmarkRepository,
             pdfProgressRepository: pdfProgressRepository,
