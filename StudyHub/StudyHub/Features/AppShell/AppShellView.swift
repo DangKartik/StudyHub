@@ -3,6 +3,7 @@ import SwiftUI
 struct AppShellView: View {
     let navigationRouter: NavigationRouter
     let appState: AppState
+    let userPreferences: UserPreferences
     let semesterRepository: any SemesterRepositoryProtocol
     let courseRepository: any CourseRepositoryProtocol
     let assignmentRepository: any AssignmentRepositoryProtocol
@@ -17,6 +18,7 @@ struct AppShellView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let quoteRepository: any QuoteRepositoryProtocol
 
     var body: some View {
         NavigationSplitView {
@@ -25,6 +27,7 @@ struct AppShellView: View {
             AppShellDetailView(
                 destination: navigationRouter.selectedDestination,
                 appState: appState,
+                userPreferences: userPreferences,
                 semesterRepository: semesterRepository,
                 courseRepository: courseRepository,
                 assignmentRepository: assignmentRepository,
@@ -38,7 +41,8 @@ struct AppShellView: View {
                 noteRepository: noteRepository,
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
-                pdfService: pdfService
+                pdfService: pdfService,
+                quoteRepository: quoteRepository
             )
         }
     }

@@ -31,6 +31,15 @@ final class ActiveRecallQuestion {
     /// same as Flashcard's equivalents).
     var reviewCount: Int = 0
 
+    /// SM-2 scheduling state (Phase 4.4, DECISION-038) — mirrors
+    /// `Flashcard.easeFactor`/`.interval`/`.repetitionCount` exactly, which
+    /// already existed there from Phase 2 but were never added here.
+    /// `repetitionCount` is the SM-2 streak (resets on "Again"), distinct
+    /// from `reviewCount` (a lifetime total that never resets).
+    var easeFactor: Double = 2.5
+    var interval: Double = 0
+    var repetitionCount: Int = 0
+
     init(
         id: UUID = UUID(),
         question: String,
@@ -40,6 +49,9 @@ final class ActiveRecallQuestion {
         difficulty: Int = 0,
         lastReviewed: Date? = nil,
         nextReviewDate: Date? = nil,
+        easeFactor: Double = 2.5,
+        interval: Double = 0,
+        repetitionCount: Int = 0,
         createdAt: Date = Date.now,
         updatedAt: Date = Date.now
     ) {
@@ -51,6 +63,9 @@ final class ActiveRecallQuestion {
         self.difficulty = difficulty
         self.lastReviewed = lastReviewed
         self.nextReviewDate = nextReviewDate
+        self.easeFactor = easeFactor
+        self.interval = interval
+        self.repetitionCount = repetitionCount
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

@@ -66,6 +66,15 @@ struct ActiveRecallListView: View {
         viewModel.displayedQuestions(searchText: searchText, tag: selectedTag, sortOrder: sortOrder)
     }
 
+    /// Phase 4.4 (requirement 3/6) — the subset of `displayedQuestions`
+    /// actually due for review right now (due today or never reviewed).
+    /// Drives the bulk "Review" button's default instead of reviewing
+    /// every question; tapping an individual row still reviews that one
+    /// question regardless of due status.
+    private var dueQuestions: [ActiveRecallQuestion] {
+        viewModel.dueQuestions(from: displayedQuestions)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -176,15 +185,16 @@ struct ActiveRecallListView: View {
 
             Section {
                 Button {
-                    reviewSession = ActiveRecallReviewSession(questions: displayedQuestions)
+                    reviewSession = ActiveRecallReviewSession(questions: dueQuestions)
                 } label: {
-                    Label("Review \(displayedQuestions.count) Question\(displayedQuestions.count == 1 ? "" : "s")", systemImage: "shuffle")
+                    Label("Review \(dueQuestions.count) Due Question\(dueQuestions.count == 1 ? "" : "s")", systemImage: "shuffle")
                 }
-                .disabled(displayedQuestions.isEmpty)
+                .disabled(dueQuestions.isEmpty)
             }
 
-            // Review Queue (requirement 5): grouped by status, sorting only
-            // — no scheduling algorithm decides these buckets.
+            // Review Queue (Phase 4.4): grouped by the shared SM-2 due-date
+            // schedule (Due Today/Due Soon/Future/Never Reviewed), same
+            // grouping Flashcards uses.
             ForEach(viewModel.queueSections(from: displayedQuestions), id: \.section) { group in
                 Section(group.section.title) {
                     ForEach(group.questions, id: \.id) { recallQuestion in

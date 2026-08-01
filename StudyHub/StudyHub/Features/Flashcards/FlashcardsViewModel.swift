@@ -1,21 +1,38 @@
 import Foundation
 
 /// A card's last self-rated recall (Phase 4.1) — stored directly in
-/// `Flashcard.difficulty` (see DECISION-034), 0 meaning unrated. No
-/// scheduling behavior is attached to these values yet; that's a later,
-/// separate spaced-repetition phase.
+/// `Flashcard.difficulty` (see DECISION-034), 0 meaning unrated.
+/// `.again` was added in Phase 4.4 (DECISION-038) to support real SM-2
+/// scheduling, which needs a fourth "didn't recall it at all" level
+/// distinct from "recalled it, but with difficulty" (`.hard`). Given
+/// rawValue 4 (not inserted before `.hard`) so every already-stored
+/// `difficulty` value from before this phase keeps its exact old meaning —
+/// no migration needed.
 enum FlashcardRating: Int, CaseIterable, Identifiable {
     case hard = 1
     case good = 2
     case easy = 3
+    case again = 4
 
     var id: Int { rawValue }
 
     var label: String {
         switch self {
+        case .again: return "Again"
         case .hard: return "Hard"
         case .good: return "Good"
         case .easy: return "Easy"
+        }
+    }
+
+    /// Converts to the feature-agnostic grade `SpacedRepetitionScheduler`
+    /// actually schedules from (Phase 4.4).
+    var reviewGrade: ReviewGrade {
+        switch self {
+        case .again: return .again
+        case .hard: return .hard
+        case .good: return .good
+        case .easy: return .easy
         }
     }
 }
@@ -23,6 +40,7 @@ enum FlashcardRating: Int, CaseIterable, Identifiable {
 enum FlashcardRatingFilter: String, CaseIterable, Identifiable {
     case all
     case unrated
+    case again
     case hard
     case good
     case easy
@@ -33,6 +51,7 @@ enum FlashcardRatingFilter: String, CaseIterable, Identifiable {
         switch self {
         case .all: return "All Cards"
         case .unrated: return "Unrated"
+        case .again: return "Rated Again"
         case .hard: return "Rated Hard"
         case .good: return "Rated Good"
         case .easy: return "Rated Easy"
@@ -43,6 +62,7 @@ enum FlashcardRatingFilter: String, CaseIterable, Identifiable {
         switch self {
         case .all: return true
         case .unrated: return flashcard.difficulty == 0
+        case .again: return flashcard.difficulty == FlashcardRating.again.rawValue
         case .hard: return flashcard.difficulty == FlashcardRating.hard.rawValue
         case .good: return flashcard.difficulty == FlashcardRating.good.rawValue
         case .easy: return flashcard.difficulty == FlashcardRating.easy.rawValue
@@ -64,38 +84,6 @@ enum FlashcardSortOrder: String, CaseIterable, Identifiable {
         case .oldestCreated: return "Oldest Created"
         case .recentlyReviewed: return "Recently Reviewed"
         case .oldestReviewed: return "Oldest Reviewed"
-        }
-    }
-}
-
-/// The same three Review Queue groupings as Active Recall
-/// (`ActiveRecallQueueSection`) — sorting only, no scheduling algorithm.
-/// Flashcards has no dedicated "Again" rating (just Hard/Good/Easy), so
-/// "Review Again" here means "last rated Hard" — the closest equivalent of
-/// "needs another look soon" in this 3-level scheme.
-enum FlashcardQueueSection: CaseIterable, Identifiable {
-    case reviewAgain
-    case neverReviewed
-    case recentlyReviewed
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .reviewAgain: return "Review Again"
-        case .neverReviewed: return "Never Reviewed"
-        case .recentlyReviewed: return "Recently Reviewed"
-        }
-    }
-
-    fileprivate func matches(_ flashcard: Flashcard) -> Bool {
-        switch self {
-        case .reviewAgain:
-            return flashcard.difficulty == FlashcardRating.hard.rawValue
-        case .neverReviewed:
-            return flashcard.lastReviewed == nil
-        case .recentlyReviewed:
-            return flashcard.lastReviewed != nil && flashcard.difficulty != FlashcardRating.hard.rawValue
         }
     }
 }
@@ -222,14 +210,23 @@ final class FlashcardsViewModel {
         }
     }
 
-    /// Groups an already-filtered/sorted list into the three Review Queue
-    /// sections — sorting only, no scheduling algorithm. Empty sections are
-    /// omitted. Mirrors `ActiveRecallViewModel.queueSections(from:)`.
-    func queueSections(from flashcards: [Flashcard]) -> [(section: FlashcardQueueSection, flashcards: [Flashcard])] {
-        FlashcardQueueSection.allCases.compactMap { section in
-            let matching = flashcards.filter { section.matches($0) }
+    /// Groups an already-filtered/sorted list into the shared
+    /// `DueQueueSection` buckets (Phase 4.4, DECISION-038), keyed on the
+    /// real SM-2 schedule instead of the old placeholder "last rating"
+    /// grouping. Empty sections are omitted. Mirrors
+    /// `ActiveRecallViewModel.queueSections(from:)`.
+    func queueSections(from flashcards: [Flashcard]) -> [(section: DueQueueSection, flashcards: [Flashcard])] {
+        DueQueueSection.allCases.compactMap { section in
+            let matching = flashcards.filter { DueQueueSection.classify(nextReviewDate: $0.nextReviewDate) == section }
             return matching.isEmpty ? nil : (section, matching)
         }
+    }
+
+    /// The subset of `flashcards` that belong in a "due now" review session
+    /// (Phase 4.4, requirement 3/6) — due today or never reviewed. Drives
+    /// the list's "Review" button default instead of reviewing every card.
+    func dueFlashcards(from flashcards: [Flashcard]) -> [Flashcard] {
+        flashcards.filter { DueQueueSection.classify(nextReviewDate: $0.nextReviewDate).isDueNow }
     }
 
     func loadFlashcards() {

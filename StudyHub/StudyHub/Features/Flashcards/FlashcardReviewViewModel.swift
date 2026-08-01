@@ -1,10 +1,10 @@
 import Foundation
 
 /// Drives a single review pass over a fixed set of cards (Phase 4.1).
-/// Rating a card only records the rating — `difficulty`/`lastReviewed`/
-/// `reviewCount` per DECISION-034 — and advances to the next card. No
-/// scheduling/spaced-repetition behavior is implemented here; that's a
-/// later, separate phase.
+/// Rating a card records the rating — `difficulty`/`lastReviewed`/
+/// `reviewCount` per DECISION-034 — and immediately computes its next
+/// review via the shared `SpacedRepetitionScheduler` (Phase 4.4,
+/// DECISION-038), then advances to the next card.
 @MainActor
 @Observable
 final class FlashcardReviewViewModel {
@@ -45,9 +45,18 @@ final class FlashcardReviewViewModel {
     func rate(_ rating: FlashcardRating) {
         guard let card = currentCard else { return }
 
+        let scheduled = SpacedRepetitionScheduler.schedule(
+            rating: rating.reviewGrade,
+            current: .init(easeFactor: card.easeFactor, interval: card.interval, repetitionCount: card.repetitionCount)
+        )
+
         card.difficulty = rating.rawValue
         card.lastReviewed = .now
         card.reviewCount += 1
+        card.easeFactor = scheduled.easeFactor
+        card.interval = scheduled.interval
+        card.repetitionCount = scheduled.repetitionCount
+        card.nextReviewDate = scheduled.nextReviewDate
         card.updatedAt = .now
 
         do {

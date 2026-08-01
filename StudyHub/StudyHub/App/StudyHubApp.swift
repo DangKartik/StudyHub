@@ -10,6 +10,7 @@ struct StudyHubApp: App {
         WindowGroup {
             RootView(
                 appState: container.appState,
+                userPreferences: container.userPreferences,
                 navigationRouter: container.navigationRouter,
                 semesterRepository: container.semesterRepository,
                 courseRepository: container.courseRepository,
@@ -24,7 +25,8 @@ struct StudyHubApp: App {
                 noteRepository: container.noteRepository,
                 bookmarkRepository: container.bookmarkRepository,
                 pdfProgressRepository: container.pdfProgressRepository,
-                pdfService: container.pdfService
+                pdfService: container.pdfService,
+                quoteRepository: container.quoteRepository
             )
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
