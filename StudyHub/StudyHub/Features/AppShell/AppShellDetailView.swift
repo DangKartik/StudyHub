@@ -3,6 +3,7 @@ import SwiftUI
 struct AppShellDetailView: View {
     let destination: SidebarDestination?
     let appState: AppState
+    let userPreferences: UserPreferences
     let semesterRepository: any SemesterRepositoryProtocol
     let courseRepository: any CourseRepositoryProtocol
     let assignmentRepository: any AssignmentRepositoryProtocol
@@ -17,6 +18,7 @@ struct AppShellDetailView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let quoteRepository: any QuoteRepositoryProtocol
 
     var body: some View {
         NavigationStack {
@@ -31,19 +33,21 @@ struct AppShellDetailView: View {
         case .home:
             HomeView(
                 appState: appState,
+                userPreferences: userPreferences,
                 semesterRepository: semesterRepository,
                 courseRepository: courseRepository,
                 assignmentRepository: assignmentRepository,
-                statisticsRepository: statisticsRepository,
                 lectureRepository: lectureRepository,
                 readingRepository: readingRepository,
                 resourceRepository: resourceRepository,
                 flashcardRepository: flashcardRepository,
                 activeRecallRepository: activeRecallRepository,
+                studySessionRepository: studySessionRepository,
                 noteRepository: noteRepository,
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
-                pdfService: pdfService
+                pdfService: pdfService,
+                quoteRepository: quoteRepository
             )
         case .courses:
             CoursesView(
@@ -96,6 +100,31 @@ struct AppShellDetailView: View {
                 pdfProgressRepository: pdfProgressRepository,
                 pdfService: pdfService
             )
+        case .statistics:
+            AnalyticsView(
+                courseRepository: courseRepository,
+                readingRepository: readingRepository,
+                pdfProgressRepository: pdfProgressRepository,
+                flashcardRepository: flashcardRepository,
+                activeRecallRepository: activeRecallRepository,
+                studySessionRepository: studySessionRepository,
+                userPreferences: userPreferences
+            )
+        case .search:
+            GlobalSearchView(
+                appState: appState,
+                semesterRepository: semesterRepository,
+                noteRepository: noteRepository,
+                flashcardRepository: flashcardRepository,
+                activeRecallRepository: activeRecallRepository,
+                readingRepository: readingRepository,
+                courseRepository: courseRepository,
+                bookmarkRepository: bookmarkRepository,
+                pdfProgressRepository: pdfProgressRepository,
+                pdfService: pdfService
+            )
+        case .settings:
+            SettingsView(userPreferences: userPreferences)
         case .some(let destination):
             StudyHubEmptyState(
                 icon: destination.systemImage,

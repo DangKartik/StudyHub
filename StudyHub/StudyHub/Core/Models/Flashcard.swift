@@ -14,6 +14,12 @@ final class Flashcard {
     var reviewCount: Int = 0
     var easeFactor: Double = 2.5
     var interval: Double = 0
+    /// SM-2's consecutive-successful-repetition streak (Phase 4.4,
+    /// DECISION-038) — distinct from `reviewCount`, which is a lifetime
+    /// total that never resets. This resets to 0 on an "Again" rating,
+    /// exactly as the SM-2 algorithm requires, and drives how the next
+    /// interval is computed (1 day -> 6 days -> `interval * easeFactor`).
+    var repetitionCount: Int = 0
     var createdAt: Date = Date.now
     var updatedAt: Date = Date.now
 
@@ -43,6 +49,7 @@ final class Flashcard {
         reviewCount: Int = 0,
         easeFactor: Double = 2.5,
         interval: Double = 0,
+        repetitionCount: Int = 0,
         createdAt: Date = Date.now,
         updatedAt: Date = Date.now
     ) {
@@ -57,6 +64,7 @@ final class Flashcard {
         self.reviewCount = reviewCount
         self.easeFactor = easeFactor
         self.interval = interval
+        self.repetitionCount = repetitionCount
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

@@ -1,10 +1,10 @@
 import Foundation
 
 /// Drives a single review pass over a fixed set of questions (Phase 4.2).
-/// Rating only records the rating — `difficulty`/`lastReviewed`/
-/// `reviewCount` per DECISION-035 — and advances to the next question. No
-/// scheduling/spaced-repetition behavior is implemented here; that's a
-/// later, separate phase. Mirrors `FlashcardReviewViewModel`.
+/// Rating records the rating — `difficulty`/`lastReviewed`/`reviewCount`
+/// per DECISION-035 — and immediately computes its next review via the
+/// shared `SpacedRepetitionScheduler` (Phase 4.4, DECISION-038), then
+/// advances to the next question. Mirrors `FlashcardReviewViewModel`.
 @MainActor
 @Observable
 final class ActiveRecallReviewViewModel {
@@ -45,9 +45,18 @@ final class ActiveRecallReviewViewModel {
     func rate(_ rating: RecallRating) {
         guard let question = currentQuestion else { return }
 
+        let scheduled = SpacedRepetitionScheduler.schedule(
+            rating: rating.reviewGrade,
+            current: .init(easeFactor: question.easeFactor, interval: question.interval, repetitionCount: question.repetitionCount)
+        )
+
         question.difficulty = rating.rawValue
         question.lastReviewed = .now
         question.reviewCount += 1
+        question.easeFactor = scheduled.easeFactor
+        question.interval = scheduled.interval
+        question.repetitionCount = scheduled.repetitionCount
+        question.nextReviewDate = scheduled.nextReviewDate
         question.updatedAt = .now
 
         do {

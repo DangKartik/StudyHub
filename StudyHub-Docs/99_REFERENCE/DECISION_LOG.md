@@ -2838,6 +2838,157 @@ Lecture.swift gains: @Relationship(deleteRule: .nullify, inverse: \StudySession.
 
 ---
 
+# DECISION-038
+
+## Decision
+
+Phase 4.4 (Spaced Repetition, SM-2) adds real scheduling on top of the review metadata Flashcard/ActiveRecallQuestion already carried:
+
+- `ActiveRecallQuestion` gains `easeFactor: Double = 2.5` and `interval: Double = 0` — `Flashcard` already had both (dormant since Phase 2); Active Recall's equivalents never existed.
+- Both `Flashcard` and `ActiveRecallQuestion` gain `repetitionCount: Int = 0` — SM-2's consecutive-successful-repetition streak, which resets to 0 on an "Again" rating. This is deliberately a *new* field, not a repurposing of the existing `reviewCount` (a lifetime total that never resets and is already relied on for "reviewed N times" bookkeeping) — conflating the two would silently change `reviewCount`'s meaning.
+- `FlashcardRating` gains a fourth case, `.again = 4` (rawValue 4, not inserted before `.hard`) — Active Recall already had a 4-level Again/Hard/Good/Easy rating (`RecallRating`); Flashcard only had 3 (Hard/Good/Easy). SM-2 needs a genuine "didn't recall it" grade distinct from "recalled it, but with difficulty," so Flashcard needed the same 4th level. Appending at rawValue 4 (rather than renumbering to `again=0`) keeps every already-stored `Flashcard.difficulty` value from before this phase meaning exactly what it always meant — no data migration, no reinterpretation of historical ratings.
+- No changes to `Flashcard.difficulty`/`nextReviewDate`/`lastReviewed`/`reviewCount`/`easeFactor`/`interval` — all reused exactly as they already existed.
+
+A new feature-agnostic `ReviewGrade` enum (again/hard/good/easy) and `SpacedRepetitionScheduler.schedule(rating:current:)` (a pure function, no persistence) live in a new `Core/Services/SpacedRepetitionScheduler.swift` — the single engine both `FlashcardReviewViewModel.rate(_:)` and `ActiveRecallReviewViewModel.rate(_:)` call, per requirement 5 ("use the same scheduling engine, avoid duplicate implementations"). Each feature's own rating enum (`FlashcardRating`/`RecallRating`) converts to `ReviewGrade` at the point of grading; the scheduler itself knows nothing about either model type.
+
+A new shared `DueQueueSection` enum (Due Today / Due Soon / Future / Never Reviewed), classified purely from `nextReviewDate`, replaces the old placeholder `FlashcardQueueSection`/`ActiveRecallQueueSection` (which grouped by *last rating*, explicitly documented in their own doc comments as "no scheduling algorithm — that's a later phase"). Both list views' "Review" button now defaults to `dueFlashcards`/`dueQuestions` (due today or never reviewed) instead of every currently-displayed card/question, satisfying requirement 3/4/6 without Study Mode needing any dedicated code of its own — it already embeds these same list views, so it inherits the due-default behavior for free.
+
+---
+
+## Why
+
+Requirement 1 ("reuse existing fields whenever possible, only change models if absolutely necessary") is why this list is as short as it is: `Flashcard` already had every SM-2 field except the repetition streak; `ActiveRecallQuestion` was missing two fields Flashcard already had (`easeFactor`/`interval`) plus the same new streak field. Neither model needed `nextReviewDate` added — both already had it, unused until now.
+
+The `reviewCount` vs. `repetitionCount` split specifically avoids a subtle correctness bug: SM-2's interval-growth logic (`1 day -> 6 days -> interval * ease`) depends on knowing how many *consecutive* successful reviews have happened, which resets on a lapse. `reviewCount` never resets by design (it's a lifetime total) — using it for SM-2's streak would either break SM-2's own logic (never reset means intervals only ever grow, even after failures) or silently change what "reviewed N times" has meant since Phase 4.1/4.2.
+
+`FlashcardRating.again`'s rawValue (4, not 0) is the same reasoning DECISION-036/037 already established for this project: an additive value that can't collide with or reinterpret anything already persisted.
+
+---
+
+## SwiftData migration impact
+
+Additive only — new fields with default values (`Double`/`Int`, all defaulted), same risk class as every prior phase. No destructive changes, no relationship shape changes, no manual migration plan needed. Existing Flashcard/ActiveRecallQuestion rows backfill the new fields' defaults automatically.
+
+One behavioral note, not a migration concern: any Flashcard/ActiveRecallQuestion rated under the pre-4.4 flow (Phase 4.1/4.2) has `nextReviewDate == nil`, since nothing ever computed one before this phase — those items classify as "Never Reviewed" in the new due queue (correctly, from SM-2's perspective: no real repetition streak exists for them yet) until their next review, at which point real scheduling begins. Their existing `difficulty`/`lastReviewed`/`reviewCount` history is untouched either way.
+
+---
+
+## CloudKit compatibility
+
+Unaffected — every new field is a plain `Double`/`Int` with a default value; no new relationships, no non-optional field without a default.
+
+---
+
+## Impact
+
+```
+Core/Models/Flashcard.swift: adds repetitionCount: Int = 0
+Core/Models/ActiveRecallQuestion.swift: adds easeFactor: Double = 2.5, interval: Double = 0, repetitionCount: Int = 0
+Core/Services/SpacedRepetitionScheduler.swift (new): ReviewGrade enum, SpacedRepetitionScheduler.schedule(rating:current:reviewedAt:) (SM-2), DueQueueSection enum (Due Today/Due Soon/Future/Never Reviewed) + classify(nextReviewDate:)/isDueNow
+Features/Flashcards/FlashcardsViewModel.swift: FlashcardRating gains .again = 4 + reviewGrade; FlashcardRatingFilter gains .again; FlashcardQueueSection removed, queueSections(from:) rewritten against DueQueueSection; new dueFlashcards(from:)
+Features/Flashcards/FlashcardReviewViewModel.swift: rate(_:) now calls SpacedRepetitionScheduler.schedule and writes easeFactor/interval/repetitionCount/nextReviewDate back to the card
+Features/Flashcards/FlashcardReviewView.swift: adds the "Again" rating button
+Features/Flashcards/FlashcardListView.swift: "Review" button now reviews dueFlashcards instead of every displayedFlashcard
+Features/ActiveRecall/ActiveRecallViewModel.swift: RecallRating gains reviewGrade; ActiveRecallQueueSection removed, queueSections(from:) rewritten against DueQueueSection; new dueQuestions(from:)
+Features/ActiveRecall/ActiveRecallReviewViewModel.swift: rate(_:) now calls SpacedRepetitionScheduler.schedule and writes easeFactor/interval/repetitionCount/nextReviewDate back to the question
+Features/ActiveRecall/ActiveRecallListView.swift: "Review" button now reviews dueQuestions instead of every displayedQuestion
+Study Mode (StudySessionWorkspaceView) requires no changes — it embeds these same list views, so it inherits the due-default "Review" behavior automatically (requirement 6), consistent with requirement 5's "avoid duplicate implementations"
+```
+
+---
+
+# DECISION-039
+
+## Decision
+
+Phase 4.5 (Analytics & Insights) adds a dedicated `AnalyticsView`/`AnalyticsViewModel` (new `Features/Analytics/` directory) that computes every metric fresh, at load time, from existing repositories — `Course`, `Reading`, `PDFProgress`, `Flashcard`, `ActiveRecallQuestion`, `StudySession`. **No model changes at all.** It's wired to the sidebar's existing `.statistics` destination, which had no real screen behind it (same dead-stub shape `.resources` had before it was removed) — no new sidebar entry needed.
+
+`StatisticsSnapshot`/`StatisticsRepository` (referenced from `HomeViewModel`, confirmed by audit to have zero writers anywhere in the codebase) is deliberately **not** used as a data source — same reasoning DECISION-037 applied to `StudySession` before Phase 4.3: a dormant, never-populated field isn't a data source, it's just unused schema. Everything is computed from the raw, actively-written repositories instead.
+
+Two categories of metric are honest approximations, not exact historical measurements, because the schema doesn't (and per this project's standing "don't change models unless absolutely necessary" rule, shouldn't) store the data a precise version would need:
+
+- **Flashcard "retention estimate" and Active Recall "success rate"/"average confidence"** are snapshot proxies: the % of already-reviewed cards/questions whose *most recent* rating (`difficulty`) is Good/Easy, and a 0-100% mapping of that same last rating (Again=0%, Hard=33%, Good=66%, Easy=100%) for "confidence." A true historical version (e.g. "% of all reviews ever, across time, that were successful") would require a per-review log — a new model, since `Flashcard`/`ActiveRecallQuestion` only ever store the *current* rating (Phase 4.4's SM-2 fields track schedule state, not a history of past grades). Adding that log was judged not worth a schema change for this phase; the snapshot proxy is clearly labeled as such in the UI.
+- **"Average reading speed"** uses Study Sessions that logged `pagesReadCount > 0` as the only actual time signal available (`total pages read across those sessions ÷ their total duration`) — neither `Reading` nor `PDFProgress` tracks time spent reading, and a session's duration is blended across whatever tabs (PDF/Notes/Flashcards/Active Recall) were open during it, not pure reading time. This is an approximation, not a precise per-page timer.
+
+"Review history" (Active Recall's requirement) and the Charts section's "Review history" chart share one computation: daily `flashcardsReviewedCount`/`questionsAnsweredCount` totals from `StudySession` (genuine historical, per-day data StudySession already captures) — this sidesteps needing a review log entirely for that requirement, since a session-level daily count is a real time series already sitting in the schema.
+
+All 5 requested charts (Daily study time, Weekly trend, Course distribution, Review history, Reading progress) plus Study Session's "daily heatmap" are built with Swift Charts only (`BarMark`/`LineMark`/`SectorMark`/`RectangleMark`) — no third-party charting library, per requirement 6.
+
+---
+
+## Why
+
+Requirement 7 ("keep analytics read-only, do not duplicate data, compute from repositories") is the reason there's no new model at all: every number is derived at load time from data these repositories already hand back for other features' own purposes (Flashcard/ActiveRecallQuestion's SM-2 fields, StudySession's per-session counters, PDFProgress's page tracking) — nothing new is written anywhere, and `loadAnalytics()` can be called repeatedly with zero side effects.
+
+The snapshot-proxy approach for retention/success-rate/confidence follows the same judgment call DECISION-038 already made explicit for Flashcard's `repetitionCount` vs `reviewCount`: don't silently repurpose or reinterpret an existing field's meaning, and don't add a new model just to make a metric's name technically more precise, when a clearly-labeled approximation using data that already exists serves the phase's actual goal (visibility into study habits) just as well.
+
+---
+
+## SwiftData migration impact
+
+None — no model changes. Purely additive new Swift files (`Features/Analytics/AnalyticsViewModel.swift`, `AnalyticsView.swift`, `AnalyticsCharts.swift`) plus wiring the pre-existing `.statistics` sidebar case to the new screen in `AppShellDetailView.swift`.
+
+---
+
+## CloudKit compatibility
+
+Unaffected — no schema changes.
+
+---
+
+## Impact
+
+```
+Features/Analytics/AnalyticsViewModel.swift (new): result structs (StudyTimeSummary, ReadingAnalytics, FlashcardAnalytics, ActiveRecallAnalytics, SessionAnalytics) + chart-data structs (DailyDataPoint, WeeklyDataPoint, CourseDistributionPoint, ReviewHistoryPoint, ReadingProgressPoint, HeatmapCell) + AnalyticsViewModel computing all of it from courseRepository/readingRepository/pdfProgressRepository/flashcardRepository/activeRecallRepository/studySessionRepository
+Features/Analytics/AnalyticsCharts.swift (new): DailyStudyTimeChart, WeeklyTrendChart, CourseDistributionChart, ReviewHistoryChart, ReadingProgressChart, StudyHeatmapChart — all Swift Charts (Charts framework), no third-party dependency
+Features/Analytics/AnalyticsView.swift (new): the dashboard screen assembling all 5 analytics sections + the charts section
+Features/AppShell/AppShellDetailView.swift: .statistics now routes to AnalyticsView instead of falling through to the generic "hasn't been built yet" empty state
+```
+
+---
+
+# DECISION-040
+
+## Decision
+
+Adds `UserPreferences` (`Core/UserPreferences.swift`) — a new, small `@Observable` class holding plain UI preferences (`weekStartsOnMonday: Bool`, `appearance: AppearancePreference`), persisted via `UserDefaults`, deliberately separate from `AppState` (which holds runtime state derived from the SwiftData model graph, like the active Semester) since these have no model backing at all. Threaded through the same DI chain as every repository (`AppContainer` → `StudyHubApp` → `RootView` → `AppShellView` → `AppShellDetailView`).
+
+Wires up the two remaining dead-stub sidebar destinations: `.search` → `GlobalSearchView` (cross-feature search over Notes/Flashcards/Active Recall/Readings/Courses) and `.settings` → `SettingsView` (Appearance, week-start, About). Tapping a Flashcard/Active Recall search result opens its review screen directly (not the edit form) — search here means "go study this," matching what tapping a row already does in each feature's own list.
+
+Also activates `Quote`/`QuoteRepository` — confirmed via a full-project search to have existed since Phase 2 with zero writers anywhere. Home's Study Overview card (added this session) originally shipped with its own hardcoded quote array; this replaces that with `quoteRepository.nextQuote()` plus a one-time seed of starter quotes in `AppContainer.init()` (only when the table is empty, never overwriting anything a user adds later) — the same "activate dormant Phase 2 scaffolding instead of duplicating it" move DECISION-037/038/039 already made for `StudySession`, SM-2 fields, and Analytics.
+
+---
+
+## Why
+
+Discovered mid-session while wiring Home's quote card: `QuoteRepository.nextQuote()` already implements a proper no-repeat rotation (marks each quote shown, reshuffles once the whole pool has been shown) — strictly better than the day-of-year index I'd hardcoded, and reusing it avoids a second, parallel "quote list" concept existing in the codebase.
+
+`UserPreferences` as its own class (not folded into `AppState`) keeps a clean line between "state derived from user data" (Semester, courses, etc. — would need SwiftData/model changes to alter) and "how the user wants the UI to look/behave" (Settings-editable, `UserDefaults`-backed, no model involvement at all).
+
+---
+
+## SwiftData migration impact
+
+None. `UserPreferences` has no SwiftData backing. `Quote` seeding uses the existing model/repository as designed — no schema change.
+
+---
+
+## Impact
+
+```
+Core/UserPreferences.swift (new): UserPreferences, AppearancePreference
+Core/Utilities/StudyTimeFormatter.swift (new): minutes -> "Xm"/"Xh Ym" display formatting, used by Analytics and Home
+Features/Settings/SettingsView.swift (new)
+Features/Search/GlobalSearchView.swift, GlobalSearchViewModel.swift (new)
+Features/AppShell/AppShellDetailView.swift: .search and .settings now route to real screens instead of the generic empty state
+App/AppContainer.swift: adds userPreferences; seeds Quote table once if empty
+App/StudyHubApp.swift, App/RootView.swift, Features/AppShell/AppShellView.swift: thread userPreferences + quoteRepository through; RootView applies .preferredColorScheme(userPreferences.appearance.colorScheme)
+Features/Home/HomeView.swift, HomeViewModel.swift: quote card now sourced from quoteRepository.nextQuote() instead of a hardcoded array
+Features/Analytics/AnalyticsViewModel.swift, AnalyticsCharts.swift: week-boundary calculations and the heatmap's day ordering now use userPreferences.calendar instead of Calendar.current
+```
+
+---
+
 # Decision Index
 
 ```
@@ -3024,6 +3175,21 @@ Active Recall Gains Course Field After All (Reverses DECISION-027)
 DECISION-037
 
 StudySession Reshaped for First Real Use (Singular Course/Lecture, Session Counters)
+
+
+DECISION-038
+
+Spaced Repetition (SM-2): ActiveRecallQuestion Gains easeFactor/interval/repetitionCount, Flashcard Gains repetitionCount, Flashcard Rating Gains "Again"
+
+
+DECISION-039
+
+Analytics & Insights: No Model Changes, Computed Read-Only From Existing Repositories; Retention/Success-Rate/Confidence Are Snapshot Proxies, Not Full History
+
+
+DECISION-040
+
+UserPreferences Added (Week Start, Appearance); Global Search + Settings Wired to Dead-Stub Sidebar Entries; Dormant Quote/QuoteRepository Activated for Home's Quote Card
 ```
 
 ---

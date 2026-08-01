@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Simple front/back review screen (Phase 4.1) — tap to flip, then rate
-/// Hard/Good/Easy. Only the rating is saved; no scheduling is implemented.
+/// Again/Hard/Good/Easy. Rating immediately computes the card's next
+/// review via SM-2 (Phase 4.4, DECISION-038).
 struct FlashcardReviewView: View {
     @State private var viewModel: FlashcardReviewViewModel
     @State private var isFlipped = false
@@ -96,8 +97,9 @@ struct FlashcardReviewView: View {
 
     private var ratingButtons: some View {
         HStack(spacing: 12) {
-            ratingButton("Hard", color: .red, rating: .hard)
-            ratingButton("Good", color: .orange, rating: .good)
+            ratingButton("Again", color: .red, rating: .again)
+            ratingButton("Hard", color: .orange, rating: .hard)
+            ratingButton("Good", color: .blue, rating: .good)
             ratingButton("Easy", color: .green, rating: .easy)
         }
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     let appState: AppState
+    let userPreferences: UserPreferences
     let navigationRouter: NavigationRouter
     let semesterRepository: any SemesterRepositoryProtocol
     let courseRepository: any CourseRepositoryProtocol
@@ -17,11 +18,13 @@ struct RootView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let quoteRepository: any QuoteRepositoryProtocol
 
     var body: some View {
         AppShellView(
             navigationRouter: navigationRouter,
             appState: appState,
+            userPreferences: userPreferences,
             semesterRepository: semesterRepository,
             courseRepository: courseRepository,
             assignmentRepository: assignmentRepository,
@@ -35,7 +38,9 @@ struct RootView: View {
             noteRepository: noteRepository,
             bookmarkRepository: bookmarkRepository,
             pdfProgressRepository: pdfProgressRepository,
-            pdfService: pdfService
+            pdfService: pdfService,
+            quoteRepository: quoteRepository
         )
+        .preferredColorScheme(userPreferences.appearance.colorScheme)
     }
 }

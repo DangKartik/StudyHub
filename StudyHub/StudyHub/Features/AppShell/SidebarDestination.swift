@@ -9,7 +9,6 @@ enum SidebarDestination: String, CaseIterable, Identifiable, Hashable {
     case activeRecall
     case notes
     case statistics
-    case resources
     case search
     case settings
 
@@ -25,7 +24,6 @@ enum SidebarDestination: String, CaseIterable, Identifiable, Hashable {
         case .activeRecall: return "Active Recall"
         case .notes: return "Notes"
         case .statistics: return "Statistics"
-        case .resources: return "Resources"
         case .search: return "Search"
         case .settings: return "Settings"
         }
@@ -41,7 +39,6 @@ enum SidebarDestination: String, CaseIterable, Identifiable, Hashable {
         case .activeRecall: return "questionmark.circle.fill"
         case .notes: return "note.text"
         case .statistics: return "chart.bar.fill"
-        case .resources: return "folder.fill"
         case .search: return "magnifyingglass"
         case .settings: return "gearshape.fill"
         }

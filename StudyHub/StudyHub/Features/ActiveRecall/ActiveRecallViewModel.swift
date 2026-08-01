@@ -2,10 +2,9 @@ import Foundation
 
 /// A question's last self-rated recall (Phase 4.2) — stored in
 /// `ActiveRecallQuestion.difficulty` (see DECISION-035), 0 meaning unrated.
-/// Unlike Flashcard's 3-level rating, Active Recall has an explicit
-/// "Again" level (got it wrong / need to see it soon) distinct from having
-/// never been reviewed at all. No scheduling behavior is attached to these
-/// values; that's a later, separate spaced-repetition phase.
+/// Unlike Flashcard's original 3-level rating, Active Recall already had an
+/// explicit "Again" level (got it wrong / need to see it soon) distinct
+/// from having never been reviewed at all.
 enum RecallRating: Int, CaseIterable, Identifiable {
     case again = 1
     case hard = 2
@@ -20,6 +19,17 @@ enum RecallRating: Int, CaseIterable, Identifiable {
         case .hard: return "Hard"
         case .good: return "Good"
         case .easy: return "Easy"
+        }
+    }
+
+    /// Converts to the feature-agnostic grade `SpacedRepetitionScheduler`
+    /// actually schedules from (Phase 4.4, DECISION-038).
+    var reviewGrade: ReviewGrade {
+        switch self {
+        case .again: return .again
+        case .hard: return .hard
+        case .good: return .good
+        case .easy: return .easy
         }
     }
 }
@@ -38,37 +48,6 @@ enum ActiveRecallSortOrder: String, CaseIterable, Identifiable {
         case .oldestCreated: return "Oldest Created"
         case .recentlyReviewed: return "Recently Reviewed"
         case .oldestReviewed: return "Oldest Reviewed"
-        }
-    }
-}
-
-/// The three Review Queue groupings (Phase 4.2, requirement 5) — sorting
-/// only, no scheduling algorithm: which bucket a question falls into is
-/// derived purely from its last rating/`lastReviewed`, not any computed due
-/// date.
-enum ActiveRecallQueueSection: CaseIterable, Identifiable {
-    case reviewAgain
-    case neverReviewed
-    case recentlyReviewed
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .reviewAgain: return "Review Again"
-        case .neverReviewed: return "Never Reviewed"
-        case .recentlyReviewed: return "Recently Reviewed"
-        }
-    }
-
-    fileprivate func matches(_ question: ActiveRecallQuestion) -> Bool {
-        switch self {
-        case .reviewAgain:
-            return question.difficulty == RecallRating.again.rawValue
-        case .neverReviewed:
-            return question.lastReviewed == nil
-        case .recentlyReviewed:
-            return question.lastReviewed != nil && question.difficulty != RecallRating.again.rawValue
         }
     }
 }
@@ -205,14 +184,23 @@ final class ActiveRecallViewModel {
         }
     }
 
-    /// Groups an already-filtered/sorted list into the three Review Queue
-    /// sections (requirement 5) — sorting only, no scheduling algorithm.
-    /// Empty sections are omitted.
-    func queueSections(from questions: [ActiveRecallQuestion]) -> [(section: ActiveRecallQueueSection, questions: [ActiveRecallQuestion])] {
-        ActiveRecallQueueSection.allCases.compactMap { section in
-            let matching = questions.filter { section.matches($0) }
+    /// Groups an already-filtered/sorted list into the shared
+    /// `DueQueueSection` buckets (Phase 4.4, DECISION-038), keyed on the
+    /// real SM-2 schedule instead of the old placeholder "last rating"
+    /// grouping. Empty sections are omitted.
+    func queueSections(from questions: [ActiveRecallQuestion]) -> [(section: DueQueueSection, questions: [ActiveRecallQuestion])] {
+        DueQueueSection.allCases.compactMap { section in
+            let matching = questions.filter { DueQueueSection.classify(nextReviewDate: $0.nextReviewDate) == section }
             return matching.isEmpty ? nil : (section, matching)
         }
+    }
+
+    /// The subset of `questions` that belong in a "due now" review session
+    /// (Phase 4.4, requirement 3/6) — due today or never reviewed. Drives
+    /// the list's "Review" button default instead of reviewing every
+    /// question.
+    func dueQuestions(from questions: [ActiveRecallQuestion]) -> [ActiveRecallQuestion] {
+        questions.filter { DueQueueSection.classify(nextReviewDate: $0.nextReviewDate).isDueNow }
     }
 
     func loadQuestions() {
