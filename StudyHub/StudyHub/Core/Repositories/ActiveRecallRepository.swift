@@ -11,6 +11,14 @@ protocol ActiveRecallRepositoryProtocol {
     func count() throws -> Int
 
     func fetch(forLecture lecture: Lecture) throws -> [ActiveRecallQuestion]
+    /// Course-owned + every Lecture-owned question combined (Phase 4.2,
+    /// DECISION-036 — ActiveRecallQuestion now has a direct Course
+    /// relationship alongside Lecture, mirroring Flashcard). Both sets are
+    /// structurally exclusive (a question is ever only `.course` or
+    /// `.lecture`, never both — see `ActiveRecallViewModel.createQuestion`),
+    /// so this concatenation cannot duplicate a question. Mirrors
+    /// `NoteRepository.fetch(forCourseIncludingLectures:)`.
+    func fetch(forCourse course: Course) throws -> [ActiveRecallQuestion]
 }
 
 @MainActor
@@ -56,5 +64,11 @@ final class ActiveRecallRepository: ActiveRecallRepositoryProtocol {
 
     func fetch(forLecture lecture: Lecture) throws -> [ActiveRecallQuestion] {
         lecture.activeRecallQuestions
+    }
+
+    func fetch(forCourse course: Course) throws -> [ActiveRecallQuestion] {
+        let courseOwned = course.activeRecallQuestions
+        let lectureOwned = course.lectures.flatMap { $0.activeRecallQuestions }
+        return courseOwned + lectureOwned
     }
 }

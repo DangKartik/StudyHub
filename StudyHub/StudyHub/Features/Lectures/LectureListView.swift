@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LectureListView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
+    let flashcardRepository: any FlashcardRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
@@ -16,12 +17,14 @@ struct LectureListView: View {
         course: Course,
         lectureRepository: any LectureRepositoryProtocol,
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
+        flashcardRepository: any FlashcardRepositoryProtocol,
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol
     ) {
         self.activeRecallRepository = activeRecallRepository
+        self.flashcardRepository = flashcardRepository
         self.noteRepository = noteRepository
         self.bookmarkRepository = bookmarkRepository
         self.pdfProgressRepository = pdfProgressRepository
@@ -69,7 +72,12 @@ struct LectureListView: View {
             }
         )) {
             if let lectureForActiveRecall {
-                ActiveRecallListView(lecture: lectureForActiveRecall, activeRecallRepository: activeRecallRepository)
+                ActiveRecallListView(
+                    lecture: lectureForActiveRecall,
+                    activeRecallRepository: activeRecallRepository,
+                    noteRepository: noteRepository,
+                    flashcardRepository: flashcardRepository
+                )
             }
         }
         .navigationDestination(isPresented: Binding(

@@ -45,9 +45,18 @@ final class Course {
     @Relationship(deleteRule: .cascade, inverse: \Flashcard.course)
     var flashcards: [Flashcard] = []
 
+    /// Phase 4.2 (DECISION-036) — directly-owned Active Recall questions
+    /// (no specific Lecture), same shape as `flashcards` above.
+    @Relationship(deleteRule: .cascade, inverse: \ActiveRecallQuestion.course)
+    var activeRecallQuestions: [ActiveRecallQuestion] = []
+
     @Relationship(deleteRule: .cascade, inverse: \Note.course)
     var noteEntries: [Note] = []
 
+    /// Phase 4.3 (DECISION-037) — `.nullify`, not `.cascade`: ending/deleting
+    /// a Course shouldn't destroy historical session records, same reasoning
+    /// as every other "preserve user content" nullify rule in this project.
+    @Relationship(deleteRule: .nullify, inverse: \StudySession.course)
     var studySessions: [StudySession] = []
 
     init(

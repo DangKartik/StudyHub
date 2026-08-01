@@ -2632,6 +2632,212 @@ The supported Markdown subset is intentionally bounded to what the toolbar itsel
 
 ---
 
+# DECISION-034
+
+## Decision
+
+`Flashcard` gains one new relationship — `note: Note?` (optional, `.nullify` delete rule, same shape as `Note.reading` from DECISION-032/033). No other model changes. The dormant `difficulty: Int`, `lastReviewed: Date?`, and `reviewCount: Int` fields (present since Phase 2, never read or written by any UI until now) are put into real use as the Phase 4.1 review screen's rating capture — `difficulty` stores the last rating (1=Hard, 2=Good, 3=Easy; 0=unrated), `lastReviewed`/`reviewCount` update on every rating. `nextReviewDate`, `easeFactor`, and `interval` remain untouched and unused — those belong to the spaced-repetition scheduling phase, explicitly out of scope here.
+
+---
+
+## Context
+
+Phase 4.1 makes `Flashcard` (CRUD-only foundation since Phase 2, confirmed via the earlier full-project audit) into a usable learning feature: a global library, proper create/edit, and a review screen that captures a Hard/Good/Easy rating per card. Before writing code, this decision settles what (if anything) needs to change on the model.
+
+---
+
+## Why the change is needed
+
+The review screen requirement ("only save the user's rating — do not implement scheduling yet") needs somewhere to persist that rating. `Flashcard` already has exactly the right fields sitting unused: `difficulty: Int` (a rating slot), `lastReviewed: Date?`, and `reviewCount: Int`. Reusing them means the review screen requires zero new fields — it just starts populating fields that were already designed for this and have sat at their defaults since Phase 2.
+
+The one genuinely new piece is `note: Note?` — the requirement asks for Flashcard-to-Note linking "if architecture supports safely." No such relationship exists today; every other requested relationship (Course, Lecture) is already present (`Flashcard.course`/`Flashcard.lecture`, wired since Phase 2 — see `FlashcardRepository.fetch(forCourse:)`/`fetch(forLecture:)`).
+
+---
+
+## SwiftData migration impact
+
+Additive, optional, defaulted relationship — the same risk class as DECISION-033's `Note.reading` and DECISION-030's Lecture-scoped Note creation, both already shipped without incident. SwiftData's lightweight migration handles a new optional relationship with no manual migration plan, matching every prior model change in this project's history (DECISION-016, 023, 025, 026, 027, 033 — none needed `VersionedSchema`/`SchemaMigrationPlan`, and this project still has none).
+
+Deliberately `.nullify`, not `.cascade`: deleting a Note a Flashcard happens to reference shouldn't delete the Flashcard — the same reasoning DECISION-032 already established for `Reading` → `Note` (user-authored learning content shouldn't be destroyed as a side effect of deleting something it's merely linked to).
+
+Reusing `difficulty`/`lastReviewed`/`reviewCount` is a pure behavior change, not a schema change — no migration considerations at all, since the columns already exist and already default to safe values (`0`, `nil`, `0`).
+
+---
+
+## CloudKit compatibility
+
+Unaffected. The new relationship is optional (required for CloudKit-backed `@Relationship` fields, already the convention every other cross-model relationship in this project follows), and no existing field's type or optionality changes.
+
+---
+
+## Impact
+
+```
+Flashcard.swift gains: var note: Note?
+Note.swift gains: @Relationship(deleteRule: .nullify, inverse: \Flashcard.note) var linkedFlashcards: [Flashcard] = []
+No changes to Flashcard.course/lecture (already existed) or to nextReviewDate/easeFactor/interval (still reserved for a future spaced-repetition phase, untouched)
+FlashcardsViewModel/FlashcardFormView/FlashcardListView rewritten to a Course/Lecture/Global Scope pattern mirroring NotesViewModel (DECISION-031's precedent) — Global scope is browse/review-only, matching Note's Global scope; creation still requires a Course/Lecture scope, same restriction Notes already has
+```
+
+---
+
+# DECISION-035
+
+## Decision
+
+`ActiveRecallQuestion` gains `tags: [String] = []`, `reviewCount: Int = 0`, `note: Note?` (`.nullify`), and `flashcard: Flashcard?` (`.nullify`). It does **not** gain a `course: Course?` field — DECISION-027's Lecture-only ownership model stands. `difficulty: Int` and `lastReviewed: Date?` (dormant since Phase 2, same as Flashcard's equivalents) are put into real use by the new Review Mode's 4-level rating (Again/Hard/Good/Easy). `nextReviewDate` remains untouched and unused, reserved for a future spaced-repetition phase.
+
+---
+
+## Context
+
+Phase 4.2 makes `ActiveRecallQuestion` (Lecture-scoped CRUD only since DECISION-027/Phase 3L) into a usable review feature: a library with Global/Course/Lecture browsing, tag filtering, Question -> Flashcard -> Note linking, and a review session capturing a 4-level rating. Before writing code, this settles what needs to change on the model — and, critically, whether Phase 4.1's Flashcard-style Course field belongs here too.
+
+---
+
+## Why Course is deliberately NOT added (respecting DECISION-027)
+
+DECISION-027 explicitly considered and rejected adding a Course relationship to `ActiveRecallQuestion`, reasoning that "the question is conceptually tied to a specific lecture's content, not the course broadly," and that `05_DATA_RELATIONSHIPS.md` documents Lecture-only ownership. Nothing about this phase's requirements overturns that reasoning — and this phase's own relationship requirement ("Question -> Flashcard -> Note -> Course, without introducing duplicate ownership") argues *against* adding a direct Course field: Course is already reachable via `question.lecture?.course`, and would become reachable a *second*, potentially-divergent way via `question.flashcard?.note?.course` if a direct field were added too. "Course" as a Create-form field is therefore implemented the same way DECISION-034's Flashcard form implements it: read-only, resolved from the question's Lecture — not a second, independently-editable relationship.
+
+Course-scope browsing (requirement 2) is implemented as a read-only aggregation over `course.lectures.flatMap(\.activeRecallQuestions)` (the same technique Notes used for Course-scope before Notes had its own direct Course field) — no model change needed, and creation still only happens through Lecture scope, consistent with DECISION-027.
+
+---
+
+## Why Note and Flashcard links ARE added
+
+Both are explicit, new requirements this phase (`Optional linked Note`, and the `Question -> Flashcard` chain) with no existing relationship to reuse — unlike Flashcard's own case in DECISION-034, there's no dormant field standing in for either. Both follow the exact precedent already established: optional, `.nullify` (deleting a linked Note or Flashcard shouldn't destroy the Active Recall question that merely references it — same reasoning as DECISION-032/034).
+
+---
+
+## SwiftData migration impact
+
+Two new optional relationships (`note`, `flashcard`) and two new defaulted scalar fields (`tags`, `reviewCount`) — the same additive, zero-migration-plan-needed shape as every model change in this project's history (DECISION-016, 023, 025, 026, 027, 033, 034). Reusing `difficulty`/`lastReviewed` is a pure behavior change, no schema impact at all.
+
+---
+
+## CloudKit compatibility
+
+Unaffected. Both new relationships are optional (the required shape for CloudKit-backed `@Relationship` fields, matching every other relationship in this project), and no existing field's type or optionality changes.
+
+---
+
+## Impact
+
+```
+ActiveRecallQuestion.swift gains: tags: [String] = [], reviewCount: Int = 0, note: Note?, flashcard: Flashcard?
+Note.swift gains: @Relationship(deleteRule: .nullify, inverse: \ActiveRecallQuestion.note) var linkedActiveRecallQuestions: [ActiveRecallQuestion] = []
+Flashcard.swift gains: @Relationship(deleteRule: .nullify, inverse: \ActiveRecallQuestion.flashcard) var linkedActiveRecallQuestions: [ActiveRecallQuestion] = []
+No course field added — Course association stays lecture-derived only, per DECISION-027
+No changes to nextReviewDate (still reserved for a future spaced-repetition phase) or questionType (unchanged from Phase 3L)
+ActiveRecallViewModel/ActiveRecallFormView/ActiveRecallListView extended to a Lecture/Course/Global Scope pattern mirroring FlashcardsViewModel (DECISION-034) — Global scope is browse/review-only, matching Flashcard/Note precedent
+```
+
+---
+
+## Amendment (same phase, follow-up fix)
+
+Course scope was initially shipped read-only (no "Add" button), reasoning that no direct ownership existed to assign a new question to. In practice this made question creation undiscoverable from the Course-level and Global Active Recall screens — you had to already be inside a specific Lecture's screen, one level deeper than every other feature (Flashcards included) requires. Course scope now *does* support creation: the form additionally shows a required Lecture picker (populated from that Course's own Lectures) whenever creating from Course scope, since the model still only ever attaches to a Lecture — no model change, just resolving the same underlying constraint at Save time via an explicit picker instead of blocking creation outright. Lecture scope is unaffected (Lecture stays implied, no picker shown). Global scope remains creation-disabled, since it has no Course to source a Lecture list from either.
+
+That "required Lecture picker" then surfaced its own real friction: a Course with zero Lectures yet had nowhere valid to attach a new question, blocking creation outright (see DECISION-036 — reversed below).
+
+---
+
+# DECISION-036
+
+## Decision
+
+`ActiveRecallQuestion` gains `course: Course?` (`.cascade` delete rule, inverse `Course.activeRecallQuestions`) — reversing DECISION-027's original "Lecture-only ownership" stance. A question can now attach directly to a Course (no Lecture) or to a specific Lecture, exactly mirroring `Flashcard.course`/`Flashcard.lecture` (DECISION-034). The Lecture picker in the create form becomes optional again (like Flashcard's), not required.
+
+---
+
+## Context
+
+DECISION-027 deliberately kept Active Recall Lecture-only, reasoning a question is "tied to specific lecture content, not the course broadly." Phase 4.2 then added Course-scope *browsing* as a read-only aggregation over Lectures (DECISION-035), and a same-phase follow-up made Course scope support creation too — but only by *requiring* the user to pick one of the Course's Lectures first. That surfaced a genuine, repeated usability problem: a Course with no Lectures yet had no valid Lecture to attach to, so creation was blocked entirely (first as a silent no-op bug, then reported directly as "why do I need a lecture at all").
+
+---
+
+## Reasoning for the reversal
+
+Weighed against DECISION-027's original concern:
+
+```
+Flashcards already allow Course-level attachment as a convenience for general (not lecture-specific) content — there's no real pedagogical difference that justifies treating Active Recall questions differently
+Active Recall was the only one of the app's three learning features (Flashcards, Notes, Active Recall) requiring a Lecture — a per-feature exception users have to remember, for no clear benefit
+The friction was hit in actual use, twice, not hypothetically
+```
+
+The `flashcard?.note?.course` "duplicate path to Course" concern from DECISION-035 doesn't apply here in the way it did before: Flashcard itself already carries a direct `course` field despite also being reachable via `note?.course`, and that hasn't caused any actual divergence problem in practice — a direct `course` field is simply the established, working pattern this app uses everywhere else (Note, Flashcard), and Active Recall being the sole exception was the actual source of friction, not a benefit.
+
+---
+
+## SwiftData migration impact
+
+Additive, optional, `.cascade` relationship — same shape and risk class as `Flashcard.course` (DECISION-034) and every other relationship change in this project. No manual migration plan needed. `.cascade` (not `.nullify`) matches `Course.flashcards`'s own rule: deleting a Course deletes its directly-owned questions, same as it already does for Flashcards, Lectures, Assignments, Readings, etc. — Lecture-owned questions are unaffected (still governed by `Lecture.activeRecallQuestions`'s existing `.cascade` rule on that side).
+
+---
+
+## CloudKit compatibility
+
+Unaffected — optional relationship, no existing field's type or optionality changes.
+
+---
+
+## Impact
+
+```
+ActiveRecallQuestion.swift gains: var course: Course?
+Course.swift gains: @Relationship(deleteRule: .cascade, inverse: \ActiveRecallQuestion.course) var activeRecallQuestions: [ActiveRecallQuestion] = []
+ActiveRecallRepository.fetch(forCourse:) now returns course-owned + lecture-owned questions combined (mirrors NoteRepository.fetch(forCourseIncludingLectures:)), not just an aggregation over Lectures
+ActiveRecallViewModel.createQuestion: Course-scope creation attaches directly to the Course when no Lecture is picked, exactly like FlashcardsViewModel.createFlashcard
+ActiveRecallFormView: Lecture picker becomes optional ("None" = attach to Course directly) instead of a required, sometimes-empty-and-blocking picker
+```
+
+---
+
+# DECISION-037
+
+## Decision
+
+`StudySession` is reshaped for its first real feature-layer use (Phase 4.3): the unused `courses: [Course]` (many-to-many) and `flashcardsReviewed: [Flashcard]` fields are replaced with `course: Course?` / `lecture: Lecture?` (singular, optional — matching the actual "select one Course, optionally one Lecture" flow) and four plain `Int` counters (`flashcardsReviewedCount`, `questionsAnsweredCount`, `pagesReadCount`, `notesOpenedCount`). `startTime`/`endTime`/`duration`/`completedPomodoros` are unchanged and now finally get populated by real code.
+
+---
+
+## Why
+
+`StudySessionRepository` and `StudySession` have existed since Phase 2 with zero Feature-layer consumers (confirmed in this project's own full audit) — nothing has ever created, read, or displayed a `StudySession`. Phase 4.3 is the first phase to actually use it, so this is the first opportunity to check the existing shape against the real requirement, not a redesign of working code:
+
+```
+courses: [Course] is a many-to-many array; the actual flow is "pick one Course, optionally one Lecture" — a many-to-many relationship doesn't represent that, and there's no Lecture field at all
+flashcardsReviewed: [Flashcard] is a one-directional array with no declared inverse and no natural way to also cover Active Recall questions, pages read, or notes opened — Flashcard/ActiveRecallQuestion already track their own review history (reviewCount/lastReviewed/difficulty, DECISION-034/035); StudySession only needs a per-session tally, not to duplicate ownership of "which card" by holding references to them (requirement 6: "StudySession should orchestrate, not own")
+```
+
+Since both fields have never been written to by any code path, there is no real user data to preserve — this is corrective scoping of dormant scaffolding, not a migration affecting existing session history.
+
+---
+
+## SwiftData migration impact
+
+Additive/replacing, same risk class as every prior change (DECISION-016 through 036): new optional relationships (`course`, `lecture`) and new defaulted `Int` fields need no manual migration plan. Removing `courses`/`flashcardsReviewed` is the one genuinely destructive-shaped change in this project's history — but since nothing has ever populated either field (zero consumers, confirmed by audit), there is no real data loss in practice. `Course.studySessions` is retyped from a plain array to a proper `@Relationship(deleteRule: .nullify, inverse: \StudySession.course)` (nullify, not cascade — ending/deleting a Course shouldn't destroy historical session records, same reasoning as every other "preserve user content" nullify rule in this log). `Lecture.studySessions` is a new relationship, same shape.
+
+---
+
+## CloudKit compatibility
+
+Unaffected — all relationships remain optional/to-many, matching every other relationship in this project; no non-optional field changes shape.
+
+---
+
+## Impact
+
+```
+StudySession.swift: removes courses: [Course], flashcardsReviewed: [Flashcard]; adds course: Course?, lecture: Lecture?, flashcardsReviewedCount/questionsAnsweredCount/pagesReadCount/notesOpenedCount: Int = 0
+Course.swift: studySessions retyped to @Relationship(deleteRule: .nullify, inverse: \StudySession.course) var studySessions: [StudySession] = []
+Lecture.swift gains: @Relationship(deleteRule: .nullify, inverse: \StudySession.lecture) var studySessions: [StudySession] = []
+"Pages read" is computed by snapshotting the sum of PDFProgress.highestPageIndex across the session's Course's Readings at session start and diffing against the current sum — no changes to PDFViewerView/PDFViewerViewModel at all, avoiding touching that component's already-worked-through internals; "Flashcards reviewed"/"Questions answered"/"Notes opened" use small optional callback parameters added to FlashcardListView/ActiveRecallListView/NotesListView's course-scoped initializers (default nil, zero effect on any existing call site), invoked at the natural point of "a card was rated"/"a question was rated"/"a note was opened"
+```
+
+---
+
 # Decision Index
 
 ```
@@ -2798,6 +3004,26 @@ Reading Deletion Nullifies, Does Not Cascade, Notes
 DECISION-033
 
 Note Body Stays Markdown-in-String, Not Rich Text
+
+
+DECISION-034
+
+Flashcard Gains Note Relationship; Dormant Rating Fields Activated
+
+
+DECISION-035
+
+Active Recall Gains Note/Flashcard Links; No Course Field (Respects DECISION-027)
+
+
+DECISION-036
+
+Active Recall Gains Course Field After All (Reverses DECISION-027)
+
+
+DECISION-037
+
+StudySession Reshaped for First Real Use (Singular Course/Lecture, Session Counters)
 ```
 
 ---

@@ -12,6 +12,7 @@ struct AppShellDetailView: View {
     let resourceRepository: any ResourceRepositoryProtocol
     let flashcardRepository: any FlashcardRepositoryProtocol
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
+    let studySessionRepository: any StudySessionRepositoryProtocol
     let noteRepository: any NoteRepositoryProtocol
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
@@ -63,6 +64,34 @@ struct AppShellDetailView: View {
         case .notes:
             NotesListView(
                 noteRepository: noteRepository,
+                bookmarkRepository: bookmarkRepository,
+                pdfProgressRepository: pdfProgressRepository,
+                pdfService: pdfService
+            )
+        case .flashcards:
+            FlashcardListView(
+                noteRepository: noteRepository,
+                lectureRepository: lectureRepository,
+                flashcardRepository: flashcardRepository,
+                bookmarkRepository: bookmarkRepository,
+                pdfProgressRepository: pdfProgressRepository,
+                pdfService: pdfService
+            )
+        case .activeRecall:
+            ActiveRecallListView(
+                activeRecallRepository: activeRecallRepository,
+                noteRepository: noteRepository,
+                flashcardRepository: flashcardRepository
+            )
+        case .studyMode:
+            StudyModeView(
+                courseRepository: courseRepository,
+                studySessionRepository: studySessionRepository,
+                readingRepository: readingRepository,
+                noteRepository: noteRepository,
+                flashcardRepository: flashcardRepository,
+                activeRecallRepository: activeRecallRepository,
+                lectureRepository: lectureRepository,
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
                 pdfService: pdfService
