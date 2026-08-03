@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct CoursesView: View {
+    let appState: AppState
     let courseRepository: any CourseRepositoryProtocol
+    let semesterRepository: any SemesterRepositoryProtocol
     let lectureRepository: any LectureRepositoryProtocol
     let assignmentRepository: any AssignmentRepositoryProtocol
     let readingRepository: any ReadingRepositoryProtocol
@@ -12,18 +14,13 @@ struct CoursesView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let studySessionRepository: any StudySessionRepositoryProtocol
+    let userPreferences: UserPreferences
 
     @State private var viewModel: CoursesViewModel
     @State private var activeSheet: CourseSheet?
-    @State private var courseForLectures: Course?
-    @State private var courseForAssignments: Course?
-    @State private var courseForReadings: Course?
-    @State private var courseForResources: Course?
-    @State private var courseForGrades: Course?
-    @State private var courseForFlashcards: Course?
-    @State private var courseForActiveRecall: Course?
-    @State private var courseForNotes: Course?
-    @Environment(\.openURL) private var openURL
+    @State private var courseForDetail: Course?
+    @State private var searchText: String = ""
 
     init(
         appState: AppState,
@@ -38,9 +35,13 @@ struct CoursesView: View {
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
-        pdfService: any PDFServiceProtocol
+        pdfService: any PDFServiceProtocol,
+        studySessionRepository: any StudySessionRepositoryProtocol,
+        userPreferences: UserPreferences
     ) {
+        self.appState = appState
         self.courseRepository = courseRepository
+        self.semesterRepository = semesterRepository
         self.lectureRepository = lectureRepository
         self.assignmentRepository = assignmentRepository
         self.readingRepository = readingRepository
@@ -51,6 +52,8 @@ struct CoursesView: View {
         self.bookmarkRepository = bookmarkRepository
         self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
+        self.studySessionRepository = studySessionRepository
+        self.userPreferences = userPreferences
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -60,23 +63,56 @@ struct CoursesView: View {
 
     var body: some View {
         Group {
-            if viewModel.activeCourses.isEmpty && viewModel.archivedCourses.isEmpty {
+            if viewModel.activeCourses.isEmpty && viewModel.archivedCourses.isEmpty && viewModel.otherSemesterCourses.isEmpty {
                 StudyHubEmptyState(
                     icon: "book.closed",
                     title: "No Courses Yet",
-                    message: "Add your first course to begin organizing your semester."
+                    message: "Add your first course to begin organizing your semester.",
+                    actionTitle: "Add Course"
+                ) {
+                    activeSheet = .create
+                }
+            } else if filteredActiveCourses.isEmpty && filteredArchivedCourses.isEmpty && filteredOtherSemesterGroups.isEmpty {
+                StudyHubEmptyState(
+                    icon: "line.3.horizontal.decrease.circle",
+                    title: "No Matching Courses",
+                    message: "Try a different search."
                 )
             } else {
                 list
             }
         }
         .navigationTitle("Courses")
+        .searchable(text: $searchText, prompt: "Search Courses")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     activeSheet = .create
                 } label: {
                     Label("Add Course", systemImage: "plus")
+                }
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                NavigationLink {
+                    SemesterListView(
+                        appState: appState,
+                        courseRepository: courseRepository,
+                        semesterRepository: semesterRepository,
+                        lectureRepository: lectureRepository,
+                        assignmentRepository: assignmentRepository,
+                        readingRepository: readingRepository,
+                        resourceRepository: resourceRepository,
+                        flashcardRepository: flashcardRepository,
+                        activeRecallRepository: activeRecallRepository,
+                        noteRepository: noteRepository,
+                        bookmarkRepository: bookmarkRepository,
+                        pdfProgressRepository: pdfProgressRepository,
+                        pdfService: pdfService,
+                        studySessionRepository: studySessionRepository,
+                        userPreferences: userPreferences
+                    )
+                } label: {
+                    Label("Manage Semesters", systemImage: "calendar")
                 }
             }
         }
@@ -89,127 +125,69 @@ struct CoursesView: View {
             }
         }
         .navigationDestination(isPresented: Binding(
-            get: { courseForLectures != nil },
+            get: { courseForDetail != nil },
             set: { isPresented in
-                if !isPresented { courseForLectures = nil }
+                if !isPresented { courseForDetail = nil }
             }
         )) {
-            if let courseForLectures {
-                LectureListView(
-                    course: courseForLectures,
+            if let courseForDetail {
+                CourseDetailView(
+                    course: courseForDetail,
+                    appState: appState,
+                    courseRepository: courseRepository,
+                    semesterRepository: semesterRepository,
                     lectureRepository: lectureRepository,
-                    activeRecallRepository: activeRecallRepository,
-                    flashcardRepository: flashcardRepository,
-                    noteRepository: noteRepository,
-                    bookmarkRepository: bookmarkRepository,
-                    pdfProgressRepository: pdfProgressRepository,
-                    pdfService: pdfService
-                )
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { courseForAssignments != nil },
-            set: { isPresented in
-                if !isPresented { courseForAssignments = nil }
-            }
-        )) {
-            if let courseForAssignments {
-                AssignmentListView(course: courseForAssignments, assignmentRepository: assignmentRepository)
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { courseForReadings != nil },
-            set: { isPresented in
-                if !isPresented { courseForReadings = nil }
-            }
-        )) {
-            if let courseForReadings {
-                ReadingListView(
-                    course: courseForReadings,
+                    assignmentRepository: assignmentRepository,
                     readingRepository: readingRepository,
-                    bookmarkRepository: bookmarkRepository,
-                    pdfProgressRepository: pdfProgressRepository,
-                    pdfService: pdfService
-                )
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { courseForResources != nil },
-            set: { isPresented in
-                if !isPresented { courseForResources = nil }
-            }
-        )) {
-            if let courseForResources {
-                ResourceListView(
-                    course: courseForResources,
                     resourceRepository: resourceRepository,
-                    bookmarkRepository: bookmarkRepository,
-                    pdfProgressRepository: pdfProgressRepository,
-                    pdfService: pdfService
-                )
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { courseForGrades != nil },
-            set: { isPresented in
-                if !isPresented { courseForGrades = nil }
-            }
-        )) {
-            if let courseForGrades {
-                GradesListView(course: courseForGrades, courseRepository: courseRepository)
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { courseForFlashcards != nil },
-            set: { isPresented in
-                if !isPresented { courseForFlashcards = nil }
-            }
-        )) {
-            if let courseForFlashcards {
-                FlashcardListView(
-                    course: courseForFlashcards,
-                    noteRepository: noteRepository,
-                    lectureRepository: lectureRepository,
                     flashcardRepository: flashcardRepository,
-                    bookmarkRepository: bookmarkRepository,
-                    pdfProgressRepository: pdfProgressRepository,
-                    pdfService: pdfService
-                )
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { courseForActiveRecall != nil },
-            set: { isPresented in
-                if !isPresented { courseForActiveRecall = nil }
-            }
-        )) {
-            if let courseForActiveRecall {
-                ActiveRecallListView(
-                    course: courseForActiveRecall,
                     activeRecallRepository: activeRecallRepository,
                     noteRepository: noteRepository,
-                    flashcardRepository: flashcardRepository
-                )
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { courseForNotes != nil },
-            set: { isPresented in
-                if !isPresented { courseForNotes = nil }
-            }
-        )) {
-            if let courseForNotes {
-                NotesListView(
-                    course: courseForNotes,
-                    noteRepository: noteRepository,
                     bookmarkRepository: bookmarkRepository,
                     pdfProgressRepository: pdfProgressRepository,
-                    pdfService: pdfService
+                    pdfService: pdfService,
+                    studySessionRepository: studySessionRepository,
+                    userPreferences: userPreferences
                 )
             }
         }
         .onAppear {
             viewModel.loadCourses()
+        }
+    }
+
+    /// Plain client-side filtering over the already-loaded arrays — no
+    /// repository-level search, matching how every other list in this app
+    /// (Notes/Flashcards/Active Recall) already searches.
+    private func matchesSearch(_ course: Course) -> Bool {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        return course.name.localizedStandardContains(trimmed)
+            || course.courseCode.localizedStandardContains(trimmed)
+            || course.instructor.localizedStandardContains(trimmed)
+            || course.secondInstructor.localizedStandardContains(trimmed)
+    }
+
+    private var filteredActiveCourses: [Course] {
+        viewModel.activeCourses.filter(matchesSearch)
+    }
+
+    private var filteredArchivedCourses: [Course] {
+        viewModel.archivedCourses.filter(matchesSearch)
+    }
+
+    /// A semester with zero courses should still show up (with its own
+    /// empty-state row) so it isn't silently invisible — but only when
+    /// there's no active search, since "no courses match your search" and
+    /// "this semester has no courses at all" are different messages and the
+    /// search field is about the former.
+    private var filteredOtherSemesterGroups: [CoursesViewModel.SemesterCourseGroup] {
+        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return viewModel.otherSemesterCourses
+        }
+        return viewModel.otherSemesterCourses.compactMap { group in
+            let matching = group.courses.filter(matchesSearch)
+            return matching.isEmpty ? nil : CoursesViewModel.SemesterCourseGroup(semester: group.semester, courses: matching)
         }
     }
 
@@ -222,79 +200,103 @@ struct CoursesView: View {
                 }
             }
 
-            if !viewModel.activeCourses.isEmpty {
-                Section("Active Courses") {
-                    ForEach(viewModel.activeCourses, id: \.id) { course in
-                        editableCourseRow(course)
+            if let active = viewModel.activeSemester,
+               !filteredActiveCourses.isEmpty || searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Section {
+                    if filteredActiveCourses.isEmpty {
+                        emptySemesterRow(active)
+                    } else {
+                        ForEach(filteredActiveCourses, id: \.id) { course in
+                            editableCourseRow(course)
+                        }
                     }
+                } header: {
+                    listSectionHeader(active.name, icon: "book.closed.fill", tint: .blue)
                 }
             }
 
-            ForEach(viewModel.otherSemesterCourses) { group in
-                Section(group.semester.name) {
-                    ForEach(group.courses, id: \.id) { course in
-                        editableCourseRow(course)
+            ForEach(filteredOtherSemesterGroups) { group in
+                Section {
+                    if group.courses.isEmpty {
+                        emptySemesterRow(group.semester)
+                    } else {
+                        ForEach(group.courses, id: \.id) { course in
+                            editableCourseRow(course)
+                        }
                     }
+                } header: {
+                    listSectionHeader(group.semester.name, icon: "calendar", tint: .indigo)
                 }
             }
 
-            if !viewModel.archivedCourses.isEmpty {
-                Section("Archived Courses") {
-                    ForEach(viewModel.archivedCourses, id: \.id) { course in
-                        CourseRowView(
-                            course: course,
-                            isArchived: true,
-                            onViewLectures: { courseForLectures = course },
-                            onViewAssignments: { courseForAssignments = course },
-                            onViewReadings: { courseForReadings = course },
-                            onViewResources: { courseForResources = course },
-                            onViewGrades: { courseForGrades = course },
-                            onViewFlashcards: { courseForFlashcards = course },
-                            onViewActiveRecall: { courseForActiveRecall = course },
-                            onViewNotes: { courseForNotes = course }
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            activeSheet = .edit(course)
-                        }
-                        .accessibilityAddTraits(.isButton)
-                        .swipeActions(edge: .trailing) {
-                            Button("Delete", systemImage: "trash", role: .destructive) {
-                                withAnimation {
-                                    viewModel.deleteCourse(course)
-                                }
+            if !filteredArchivedCourses.isEmpty {
+                Section {
+                    ForEach(filteredArchivedCourses, id: \.id) { course in
+                        CourseRowView(course: course, isArchived: true)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                courseForDetail = course
                             }
+                            .accessibilityAddTraits(.isButton)
+                            .swipeActions(edge: .trailing) {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    withAnimation {
+                                        viewModel.deleteCourse(course)
+                                    }
+                                }
 
-                            Button("Unarchive", systemImage: "arrow.uturn.backward") {
-                                withAnimation {
-                                    viewModel.unarchive(course)
+                                Button("Unarchive", systemImage: "arrow.uturn.backward") {
+                                    withAnimation {
+                                        viewModel.unarchive(course)
+                                    }
                                 }
+                                .tint(.blue)
+
+                                Button("Edit", systemImage: "pencil") {
+                                    activeSheet = .edit(course)
+                                }
+                                .tint(.gray)
                             }
-                            .tint(.blue)
-                        }
                     }
+                } header: {
+                    listSectionHeader("Archived Courses", icon: "archivebox.fill", tint: .gray)
                 }
             }
         }
         .listStyle(.insetGrouped)
     }
 
+    /// Small tinted-icon + title combo for `List` section headers — same
+    /// language as Home's section headers, scaled down to fit inline with
+    /// a system section header's default text size instead of competing
+    /// with it.
+    private func listSectionHeader(_ title: String, icon: String, tint: Color) -> some View {
+        ListSectionHeaderLabel(title: title, icon: icon, tint: tint)
+    }
+
+    /// Shown in place of a course row for a semester (active or otherwise)
+    /// that has no courses yet — previously such a semester either didn't
+    /// appear at all (other semesters) or the whole section silently
+    /// vanished (active), giving no indication of what to do next.
+    private func emptySemesterRow(_ semester: Semester) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "tray")
+                .foregroundStyle(.secondary)
+            Text("No courses added yet")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(semester.name) has no courses yet.")
+    }
+
     @ViewBuilder
     private func editableCourseRow(_ course: Course) -> some View {
-        CourseRowView(
-            course: course,
-            onViewLectures: { courseForLectures = course },
-            onViewAssignments: { courseForAssignments = course },
-            onViewReadings: { courseForReadings = course },
-            onViewResources: { courseForResources = course },
-            onViewGrades: { courseForGrades = course },
-            onViewFlashcards: { courseForFlashcards = course },
-            onViewActiveRecall: { courseForActiveRecall = course },
-            onViewNotes: { courseForNotes = course }
-        )
+        CourseRowView(course: course)
         .contentShape(Rectangle())
         .onTapGesture {
-            activeSheet = .edit(course)
+            courseForDetail = course
         }
         .accessibilityAddTraits(.isButton)
         .swipeActions(edge: .trailing) {
@@ -305,11 +307,21 @@ struct CoursesView: View {
             }
             .tint(.orange)
 
-            if let mailURL = URL.mailto(course.email) {
-                Button("Email", systemImage: "envelope") {
-                    openURL(mailURL)
+            Button("Edit", systemImage: "pencil") {
+                activeSheet = .edit(course)
+            }
+            .tint(.gray)
+        }
+        // Email moved to the Course Page's toolbar — no longer duplicated
+        // as a swipe action here.
+        .contextMenu {
+            Button("Edit", systemImage: "pencil") {
+                activeSheet = .edit(course)
+            }
+            Button("Archive", systemImage: "archivebox") {
+                withAnimation {
+                    viewModel.archive(course)
                 }
-                .tint(.blue)
             }
         }
     }
@@ -327,135 +339,61 @@ private enum CourseSheet: Identifiable {
     }
 }
 
-private struct CourseRowView: View {
+/// Now just an entry point into `CourseDetailView` (tap) — the row used to
+/// carry a separate bordered button per feature (Lectures/Assignments/
+/// Readings/Resources/Grades/Flashcards/Active Recall/Notes all crammed
+/// into one HStack, which is what was overflowing off the edge of the
+/// screen on courses with long names). All of those are still reachable,
+/// just from inside the Course Page instead of the row itself.
+/// Not `private` — reused by `SemesterCoursesView`'s per-semester course
+/// list so both places render an identical row instead of two versions.
+struct CourseRowView: View {
     let course: Course
     var isArchived: Bool = false
-    var onViewLectures: (() -> Void)? = nil
-    var onViewAssignments: (() -> Void)? = nil
-    var onViewReadings: (() -> Void)? = nil
-    var onViewResources: (() -> Void)? = nil
-    var onViewGrades: (() -> Void)? = nil
-    var onViewFlashcards: (() -> Void)? = nil
-    var onViewActiveRecall: (() -> Void)? = nil
-    var onViewNotes: (() -> Void)? = nil
-
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             Circle()
                 .fill(Color.courseColor(from: course.courseColor))
                 .frame(width: 12, height: 12)
+                .overlay(Circle().strokeBorder(.background, lineWidth: 2))
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(course.name)
+                    .font(.headline)
+                if !course.courseCode.isEmpty {
                     Text(course.courseCode)
-                        .font(.headline)
-                    Text(course.name)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                if !course.instructor.isEmpty {
-                    Text(course.instructor)
+                if !course.instructorDisplayName.isEmpty {
+                    Text(course.instructorDisplayName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                }
-                if let mailURL = URL.mailto(course.email) {
-                    Button {
-                        openURL(mailURL)
-                    } label: {
-                        Text(course.email)
-                            .font(.caption)
-                            .foregroundStyle(.blue)
-                    }
-                    .buttonStyle(.plain)
                 }
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
-                "\(course.courseCode) \(course.name)." + (isArchived ? " Archived." : "")
+                "\(course.name) \(course.courseCode)." + (isArchived ? " Archived." : "")
             )
 
             Spacer()
 
             if isArchived {
                 Text("Archived")
-                    .font(.caption)
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
+                    .padding(.horizontal, StudyHubMetrics.chipHorizontalPadding)
+                    .padding(.vertical, StudyHubMetrics.chipVerticalPadding)
+                    .background(Color(uiColor: .tertiarySystemFill), in: Capsule())
             }
 
-            if let onViewLectures {
-                Button(action: onViewLectures) {
-                    Label("Lectures", systemImage: "list.bullet")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View lectures for \(course.name).")
-            }
-
-            if let onViewAssignments {
-                Button(action: onViewAssignments) {
-                    Label("Assignments", systemImage: "checklist")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View assignments for \(course.name).")
-            }
-
-            if let onViewReadings {
-                Button(action: onViewReadings) {
-                    Label("Readings", systemImage: "book")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View readings for \(course.name).")
-            }
-
-            if let onViewResources {
-                Button(action: onViewResources) {
-                    Label("Resources", systemImage: "folder")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View resources for \(course.name).")
-            }
-
-            if let onViewGrades {
-                Button(action: onViewGrades) {
-                    Label("Grades", systemImage: "chart.bar")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View grades for \(course.name).")
-            }
-
-            if let onViewFlashcards {
-                Button(action: onViewFlashcards) {
-                    Label("Flashcards", systemImage: "rectangle.stack")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View flashcards for \(course.name).")
-            }
-
-            if let onViewActiveRecall {
-                Button(action: onViewActiveRecall) {
-                    Label("Active Recall", systemImage: "brain.head.profile")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View active recall questions for \(course.name).")
-            }
-
-            if let onViewNotes {
-                Button(action: onViewNotes) {
-                    Label("Notes", systemImage: "note.text")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View notes for \(course.name).")
-            }
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
+        .padding(.vertical, 6)
     }
 }

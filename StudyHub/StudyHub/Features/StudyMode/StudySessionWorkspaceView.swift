@@ -21,6 +21,19 @@ struct StudySessionWorkspaceView: View {
     let pdfService: any PDFServiceProtocol
 
     @State private var timer = PomodoroTimerModel()
+    /// Scales the timer readout with the user's Dynamic Type setting
+    /// instead of staying pinned regardless of accessibility text size
+    /// preferences. Sized to fit inside `ringDiameter` at the default type
+    /// size, same idea as before just tuned for the ring instead of a
+    /// full-width line of text.
+    @ScaledMetric(relativeTo: .largeTitle) private var timerFontSize: CGFloat = 40
+    private let ringDiameter: CGFloat = 148
+    private let compactRingDiameter: CGFloat = 44
+    /// Whether the running/paused timer is showing its full ring (tapped
+    /// open) instead of the default compact bar — lets you check progress
+    /// at a glance without permanently giving the timer the same space it
+    /// had before starting.
+    @State private var isTimerExpanded = false
     @State private var selectedTab: StudyWorkspaceTab = .pdf
     @State private var showingEndConfirmation = false
     @State private var showingCustomDuration = false
@@ -40,14 +53,17 @@ struct StudySessionWorkspaceView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 header
-                Divider()
                 timerBar
-                Divider()
                 counterBar
-                Divider()
                 tabSwitcher
                 tabContent
             }
+            // Without this, the counter card below paints
+            // `secondarySystemGroupedBackground` (near-white) directly over
+            // the screen's default plain-white background — same
+            // invisible-card bug as Home/Course Page had before either got
+            // a base background set.
+            .background(Color(uiColor: .systemGroupedBackground))
             .onReceive(pagesReadRefreshTimer) { _ in
                 if selectedTab == .pdf {
                     sessionViewModel.refreshPagesRead()
@@ -78,10 +94,10 @@ struct StudySessionWorkspaceView: View {
     private var header: some View {
         VStack(spacing: 2) {
             Text(sessionViewModel.course.name)
-                .font(.headline)
+                .font(.title3.weight(.bold))
             if let lecture = sessionViewModel.lecture {
                 Text(lecture.topic)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
@@ -92,20 +108,158 @@ struct StudySessionWorkspaceView: View {
 
     // MARK: Pomodoro (requirement 3)
 
+    /// A ring (Clock app's Timer tab) while you're still choosing a
+    /// duration, before the session has started — once it's actually
+    /// running there's real course content to look at (readings, notes,
+    /// flashcards), so the timer collapses to a slim bar instead of
+    /// permanently occupying a big ring's worth of vertical space above it.
     private var timerBar: some View {
-        VStack(spacing: 12) {
-            Text(timer.timeText)
-                .font(.system(size: 56, weight: .bold, design: .rounded))
-                .monospacedDigit()
-
-            ProgressView(value: timer.progress)
-                .tint(.accentColor)
-                .padding(.horizontal, 40)
-
-            durationPicker
-            timerControls
+        Group {
+            if timer.isRunning || timer.isPaused {
+                if isTimerExpanded {
+                    expandedRunningTimer
+                } else {
+                    compactTimerBar
+                }
+            } else {
+                timerSetup
+            }
         }
-        .padding(.vertical, 12)
+    }
+
+    private var timerSetup: some View {
+        VStack(spacing: 10) {
+            timerRing(diameter: ringDiameter, lineWidth: 10)
+            durationPicker
+            Button {
+                timer.start()
+            } label: {
+                Label("Start", systemImage: "play.fill")
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(.vertical, 10)
+    }
+
+    /// Tapping the ring expands back to the full view below — reopened on
+    /// demand instead of either permanently hogging space (the old always-
+    /// on ring) or being stuck tiny with no way to see it bigger again.
+    private var expandedRunningTimer: some View {
+        VStack(spacing: 12) {
+            Button {
+                withAnimation { isTimerExpanded = false }
+            } label: {
+                timerRing(diameter: ringDiameter, lineWidth: 10)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Time remaining \(timer.timeText). Double tap to collapse.")
+
+            HStack(spacing: 16) {
+                if timer.isRunning {
+                    Button {
+                        timer.pause()
+                    } label: {
+                        Label("Pause", systemImage: "pause.fill")
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    Button {
+                        timer.resume()
+                    } label: {
+                        Label("Resume", systemImage: "play.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+
+                Button {
+                    timer.finish()
+                } label: {
+                    Label("Finish", systemImage: "checkmark")
+                }
+                .buttonStyle(.bordered)
+                .tint(.green)
+            }
+        }
+        .padding(.vertical, 10)
+    }
+
+    /// Bumped up from the first pass's 34pt/`.headline` — still far smaller
+    /// than the full ring, but legible enough to read at a glance instead
+    /// of squinting. Tapping the ring+time re-expands to the full view.
+    private var compactTimerBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                withAnimation { isTimerExpanded = true }
+            } label: {
+                HStack(spacing: 10) {
+                    timerRing(diameter: compactRingDiameter, lineWidth: 5)
+                    Text(timer.timeText)
+                        .font(.title3.weight(.bold))
+                        .monospacedDigit()
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Time remaining \(timer.timeText). Double tap to expand.")
+
+            Spacer()
+
+            if timer.isRunning {
+                Button {
+                    timer.pause()
+                } label: {
+                    Label("Pause", systemImage: "pause.fill")
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+            } else {
+                Button {
+                    timer.resume()
+                } label: {
+                    Label("Resume", systemImage: "play.fill")
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderedProminent)
+            }
+
+            Button {
+                timer.finish()
+            } label: {
+                Label("Finish", systemImage: "checkmark")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.bordered)
+            .tint(.green)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+    }
+
+    private func timerRing(diameter: CGFloat, lineWidth: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .stroke(Color(uiColor: .systemGray5), lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: timer.progress)
+                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 1), value: timer.progress)
+            if diameter >= ringDiameter {
+                Text(timer.timeText)
+                    .font(.system(size: timerFontSize, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .padding(.horizontal, 8)
+                    .accessibilityLabel("Time remaining \(timer.timeText)")
+            }
+        }
+        .frame(width: diameter, height: diameter)
+        // A `Circle().stroke(...)` is only hit-testable along its thin
+        // outline — the interior (where the time text sits, i.e. exactly
+        // where you'd naturally tap) wasn't actually part of the button's
+        // tappable area at all, which is why re-tapping to collapse the
+        // expanded ring wasn't registering.
+        .contentShape(Circle())
     }
 
     private var durationPicker: some View {
@@ -148,69 +302,48 @@ struct StudySessionWorkspaceView: View {
         return false
     }
 
-    private var timerControls: some View {
-        HStack(spacing: 16) {
-            if timer.isRunning {
-                Button {
-                    timer.pause()
-                } label: {
-                    Label("Pause", systemImage: "pause.fill")
-                }
-                .buttonStyle(.bordered)
-            } else if timer.isPaused {
-                Button {
-                    timer.resume()
-                } label: {
-                    Label("Resume", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-            } else {
-                Button {
-                    timer.start()
-                } label: {
-                    Label("Start", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-            }
-
-            if timer.isRunning || timer.isPaused {
-                Button {
-                    timer.finish()
-                } label: {
-                    Label("Finish", systemImage: "checkmark")
-                }
-                .buttonStyle(.bordered)
-                .tint(.green)
-            }
-        }
-    }
-
     // MARK: Session Progress (requirement 4)
 
+    /// Deliberately small — this is a passive "what you've done so far"
+    /// readout, not the point of the screen. The actual reading/notes/
+    /// flashcards content below it is what should get the visual weight,
+    /// so this card is sized to stay out of the way rather than compete
+    /// with it.
     private var counterBar: some View {
-        HStack {
-            counterItem(icon: "rectangle.stack", value: sessionViewModel.flashcardsReviewedCount, label: "Flashcards")
-            Spacer()
-            counterItem(icon: "questionmark.circle", value: sessionViewModel.questionsAnsweredCount, label: "Questions")
-            Spacer()
-            counterItem(icon: "doc.text", value: sessionViewModel.pagesReadCount, label: "Pages")
-            Spacer()
-            counterItem(icon: "note.text", value: sessionViewModel.notesOpenedCount, label: "Notes")
+        HStack(spacing: 0) {
+            counterItem(icon: "rectangle.stack.fill", value: sessionViewModel.flashcardsReviewedCount, label: "Flashcards", tint: .blue)
+            Divider().frame(height: 30)
+            counterItem(icon: "questionmark.circle.fill", value: sessionViewModel.questionsAnsweredCount, label: "Questions", tint: .purple)
+            Divider().frame(height: 30)
+            counterItem(icon: "doc.text.fill", value: sessionViewModel.pagesReadCount, label: "Pages", tint: .orange)
+            Divider().frame(height: 30)
+            counterItem(icon: "note.text", value: sessionViewModel.notesOpenedCount, label: "Notes", tint: .teal)
         }
+        .padding(.vertical, 6)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: StudyHubMetrics.cardCornerRadius))
+        .studyHubCardShadow()
         .padding(.horizontal)
-        .padding(.vertical, 10)
+        .padding(.vertical, 4)
     }
 
-    private func counterItem(icon: String, value: Int, label: String) -> some View {
-        VStack(spacing: 2) {
-            Image(systemName: icon)
-                .foregroundStyle(.secondary)
+    /// Icon + label on one line, the count below it — hugs its content
+    /// tightly rather than padding out to match the old 3-line layout,
+    /// since this is a passive readout and shouldn't compete with the
+    /// actual reading/notes/flashcards content below it.
+    private func counterItem(icon: String, value: Int, label: String, tint: Color) -> some View {
+        VStack(spacing: 1) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.caption2)
+                    .foregroundStyle(tint.opacity(0.85))
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
             Text("\(value)")
-                .font(.headline)
+                .font(.subheadline.weight(.bold))
+                .monospacedDigit()
                 .contentTransition(.numericText())
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -293,7 +426,7 @@ private enum StudyWorkspaceTab: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .pdf: return "PDF"
+        case .pdf: return "Reading"
         case .notes: return "Notes"
         case .flashcards: return "Flashcards"
         case .activeRecall: return "Active Recall"

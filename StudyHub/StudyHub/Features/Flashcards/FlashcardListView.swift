@@ -117,6 +117,24 @@ struct FlashcardListView: View {
         viewModel.dueFlashcards(from: displayedFlashcards)
     }
 
+    /// Reviewing early is never harmful, just not schedule-optimal — so
+    /// the bulk button only disables entirely when there's truly nothing
+    /// to review, falling back to every card instead of staying stuck on
+    /// "0 due" when the student wants to study ahead of schedule anyway.
+    private var reviewButtonCards: [Flashcard] {
+        dueFlashcards.isEmpty ? displayedFlashcards : dueFlashcards
+    }
+
+    private var reviewButtonLabel: String {
+        if !dueFlashcards.isEmpty {
+            return "Review \(dueFlashcards.count) Due Card\(dueFlashcards.count == 1 ? "" : "s")"
+        } else if !displayedFlashcards.isEmpty {
+            return "Study Ahead (\(displayedFlashcards.count) Card\(displayedFlashcards.count == 1 ? "" : "s"))"
+        } else {
+            return "No Cards to Review"
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -126,8 +144,11 @@ struct FlashcardListView: View {
                     StudyHubEmptyState(
                         icon: "rectangle.stack",
                         title: "No Flashcards Yet",
-                        message: "Add flashcards to help you review this material."
-                    )
+                        message: "Add flashcards to help you review this material.",
+                        actionTitle: viewModel.supportsCreation ? "Add Flashcard" : nil
+                    ) {
+                        activeSheet = .create
+                    }
                 } else if displayedFlashcards.isEmpty {
                     StudyHubEmptyState(
                         icon: "line.3.horizontal.decrease.circle",
@@ -208,7 +229,10 @@ struct FlashcardListView: View {
             if let course = lecture.course {
                 LectureFormView(
                     viewModel: LectureViewModel(course: course, lectureRepository: lectureRepository),
-                    lecture: lecture
+                    lecture: lecture,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
+                    pdfService: pdfService
                 )
             }
         }
@@ -262,11 +286,18 @@ struct FlashcardListView: View {
 
             Section {
                 Button {
-                    reviewSession = FlashcardReviewSession(cards: dueFlashcards)
+                    reviewSession = FlashcardReviewSession(cards: reviewButtonCards)
                 } label: {
-                    Label("Review \(dueFlashcards.count) Due Card\(dueFlashcards.count == 1 ? "" : "s")", systemImage: "shuffle")
+                    Label(reviewButtonLabel, systemImage: "shuffle")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
                 }
-                .disabled(dueFlashcards.isEmpty)
+                .buttonStyle(.borderedProminent)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .padding()
+                .disabled(reviewButtonCards.isEmpty)
             }
 
             // Review Queue (Phase 4.4): grouped by the shared SM-2 due-date
@@ -294,6 +325,14 @@ struct FlashcardListView: View {
                                 activeSheet = .edit(flashcard)
                             }
                             .tint(.blue)
+                        }
+                        .contextMenu {
+                            Button("Edit", systemImage: "pencil") {
+                                activeSheet = .edit(flashcard)
+                            }
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                viewModel.deleteFlashcard(flashcard)
+                            }
                         }
                     }
                 }
@@ -404,8 +443,8 @@ private struct FlashcardRowTagChip: View {
     var body: some View {
         Text(text)
             .font(.caption2)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, StudyHubMetrics.chipHorizontalPadding)
+            .padding(.vertical, StudyHubMetrics.chipVerticalPadding)
             .foregroundStyle(Color.accentColor)
             .background(Color.accentColor.opacity(0.15), in: Capsule())
     }

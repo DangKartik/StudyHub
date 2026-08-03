@@ -146,6 +146,33 @@ struct ReadingProgressPoint: Identifiable {
     let percent: Double
 }
 
+/// Every number here uses `Course.credits` as the weight — a course with no
+/// credits set can't contribute to either GPA, same "excluded, not zero"
+/// rule `GradeCalculator` already uses for weight. Both are built purely
+/// from real `Course.finalLetterGrade` values — no estimating a grade for
+/// an in-progress course, which only ever produced a guess dressed up as a
+/// number. An in-progress course's live standing still shows as a plain
+/// percentage on its own Grades page.
+struct GPASummary {
+    var semesterName: String?
+    var semesterGPA: Double?
+    var semesterCredits: Int = 0
+    var cumulativeGPA: Double?
+    var cumulativeCredits: Int = 0
+}
+
+/// One row of the per-semester GPA breakdown (`GPADetailView`) — `gpa` is
+/// `nil` under the exact same "not every credited course has a Final
+/// Letter Grade yet" rule `GPASummary.semesterGPA` uses, just applied to
+/// every semester rather than only the active one.
+struct SemesterGPARow: Identifiable {
+    let id: UUID
+    let name: String
+    let gpa: Double?
+    let credits: Int
+    let isActive: Bool
+}
+
 /// One cell in the real calendar-month grid (Study Session Analytics'
 /// "daily study heatmap", requirement 5) — `date`/`dayNumber` are `nil` for
 /// the leading/trailing filler cells that pad the grid out to full weeks
@@ -177,7 +204,9 @@ struct CalendarDayCell: Identifiable {
 @MainActor
 @Observable
 final class AnalyticsViewModel {
+    private let appState: AppState
     private let courseRepository: any CourseRepositoryProtocol
+    private let semesterRepository: any SemesterRepositoryProtocol
     private let readingRepository: any ReadingRepositoryProtocol
     private let pdfProgressRepository: any PDFProgressRepositoryProtocol
     private let flashcardRepository: any FlashcardRepositoryProtocol
@@ -186,6 +215,7 @@ final class AnalyticsViewModel {
     private let userPreferences: UserPreferences
 
     private(set) var loadError: StudyHubError?
+    private(set) var isLoading = true
 
     private(set) var studyTimeSummary = StudyTimeSummary()
     private(set) var readingAnalytics = ReadingAnalytics()
@@ -193,6 +223,8 @@ final class AnalyticsViewModel {
     private(set) var activeRecallAnalytics = ActiveRecallAnalytics()
     private(set) var sessionAnalytics = SessionAnalytics()
     private(set) var readingProgressByCourse: [ReadingProgressPoint] = []
+    private(set) var gpaSummary = GPASummary()
+    private(set) var semesterGPABreakdown: [SemesterGPARow] = []
 
     private(set) var dailyStudyTimeChart: [DailyDataPoint] = []
     private(set) var weeklyTrendChart: [WeeklyDataPoint] = []
@@ -217,7 +249,9 @@ final class AnalyticsViewModel {
     private static let weeklyTrendWeeks = 12
 
     init(
+        appState: AppState,
         courseRepository: any CourseRepositoryProtocol,
+        semesterRepository: any SemesterRepositoryProtocol,
         readingRepository: any ReadingRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
         flashcardRepository: any FlashcardRepositoryProtocol,
@@ -225,7 +259,9 @@ final class AnalyticsViewModel {
         studySessionRepository: any StudySessionRepositoryProtocol,
         userPreferences: UserPreferences
     ) {
+        self.appState = appState
         self.courseRepository = courseRepository
+        self.semesterRepository = semesterRepository
         self.readingRepository = readingRepository
         self.pdfProgressRepository = pdfProgressRepository
         self.flashcardRepository = flashcardRepository
@@ -235,6 +271,7 @@ final class AnalyticsViewModel {
     }
 
     func loadAnalytics() {
+        defer { isLoading = false }
         do {
             let courses = try courseRepository.fetchAll()
             let sessions = try studySessionRepository.fetchAll()
@@ -251,6 +288,7 @@ final class AnalyticsViewModel {
             computeSessionAnalytics(sessions: sessions, courses: courses)
             computeCharts(sessions: sessions, courses: courses)
             recomputeCalendarMonth()
+            computeGPA(courses: courses)
 
             loadError = nil
         } catch let error as StudyHubError {
@@ -484,6 +522,71 @@ final class AnalyticsViewModel {
             let rawWeekday = ((calendar.firstWeekday - 1 + position) % 7) + 1
             return symbols[rawWeekday - 1]
         }
+    }
+
+    // MARK: - GPA
+
+    /// Semester GPA uses `appState.activeSemester` (the same "currently
+    /// selected semester" concept the rest of the app already uses, e.g.
+    /// Home's dashboard) — not every semester the courses happen to belong
+    /// to. Projected spans every course regardless of semester.
+    ///
+    /// Both Semester and Cumulative are all-or-nothing for the active
+    /// semester: a semester GPA only means something once every one of its
+    /// (credited) courses has a real final grade — a partial average from
+    /// just the courses graded so far would misrepresent it. Cumulative
+    /// follows the same rule for the active semester specifically (it
+    /// simply excludes it until it's fully graded); other, already-past
+    /// semesters aren't gated this way since they're assumed complete.
+    private func computeGPA(courses: [Course]) {
+        let semesters = (try? semesterRepository.fetchAll()) ?? []
+        let activeSemesterID = appState.activeSemester?.id
+
+        var breakdown: [SemesterGPARow] = []
+        var cumulativePoints = 0.0
+        var cumulativeCredits = 0
+
+        for semester in semesters.sorted(by: { $0.startDate > $1.startDate }) {
+            let semesterCourses = courses.filter { $0.semester?.id == semester.id }
+            let result = gatedGPA(for: semesterCourses)
+            breakdown.append(SemesterGPARow(
+                id: semester.id,
+                name: semester.name,
+                gpa: result.gpa,
+                credits: result.totalCredits,
+                isActive: semester.id == activeSemesterID
+            ))
+            // Cumulative only pools in semesters that are themselves fully
+            // graded — a semester still in progress (including the active
+            // one) doesn't contribute a partial number to it.
+            if let gpa = result.gpa {
+                cumulativePoints += gpa * Double(result.totalCredits)
+                cumulativeCredits += result.totalCredits
+            }
+        }
+        semesterGPABreakdown = breakdown
+
+        let activeRow = breakdown.first { $0.isActive }
+
+        gpaSummary = GPASummary(
+            semesterName: appState.activeSemester?.name,
+            semesterGPA: activeRow?.gpa,
+            semesterCredits: activeRow?.credits ?? 0,
+            cumulativeGPA: cumulativeCredits > 0 ? cumulativePoints / Double(cumulativeCredits) : nil,
+            cumulativeCredits: cumulativeCredits
+        )
+    }
+
+    /// A semester (or any group of courses) only produces a real GPA once
+    /// every one of its credited courses has a Final Letter Grade set —
+    /// see `GPASummary.semesterGPA`'s doc comment for why a partial
+    /// average would be misleading.
+    private func gatedGPA(for courses: [Course]) -> GPAResult {
+        let credited = courses.filter { $0.credits > 0 }
+        guard !credited.isEmpty, credited.allSatisfy({ $0.finalLetterGrade != nil }) else {
+            return GPAResult(gpa: nil, totalCredits: 0)
+        }
+        return GPACalculator.gpa(for: courses)
     }
 
     // MARK: - Calendar month (Study Session heatmap, requirement 5)

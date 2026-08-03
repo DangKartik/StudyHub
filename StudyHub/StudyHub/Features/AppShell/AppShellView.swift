@@ -26,6 +26,7 @@ struct AppShellView: View {
         } detail: {
             AppShellDetailView(
                 destination: navigationRouter.selectedDestination,
+                navigationRouter: navigationRouter,
                 appState: appState,
                 userPreferences: userPreferences,
                 semesterRepository: semesterRepository,

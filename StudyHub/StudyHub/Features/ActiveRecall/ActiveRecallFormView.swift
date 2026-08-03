@@ -49,12 +49,12 @@ struct ActiveRecallFormView: View {
         NavigationStack {
             Form {
                 Section("Question") {
-                    TextEditor(text: $question)
+                    PlaceholderTextEditor(placeholder: "What question do you want to be quizzed on?", text: $question)
                         .frame(minHeight: 100)
                 }
 
                 Section("Answer") {
-                    TextEditor(text: $answer)
+                    PlaceholderTextEditor(placeholder: "What's the answer?", text: $answer)
                         .frame(minHeight: 100)
                 }
 

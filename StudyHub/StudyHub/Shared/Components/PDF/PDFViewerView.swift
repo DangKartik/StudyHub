@@ -27,6 +27,7 @@ struct PDFViewerView: View {
     let pdfService: any PDFServiceProtocol
 
     @State private var viewModel: PDFViewerViewModel
+    @Environment(\.dismiss) private var dismiss
 
     @State private var isMarkupActive = false
     @State private var isShowingSummary = false
@@ -113,8 +114,11 @@ struct PDFViewerView: View {
                 StudyHubEmptyState(
                     icon: "doc.text.magnifyingglass",
                     title: error.title,
-                    message: error.message
-                )
+                    message: error.message,
+                    actionTitle: "Retry"
+                ) {
+                    viewModel.loadDocument()
+                }
             } else {
                 ProgressView()
             }
@@ -189,6 +193,16 @@ struct PDFViewerView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Now always presented via `.fullScreenCover` (see callers) so
+            // it opens genuinely fullscreen instead of confined to the
+            // bounds of whatever sheet triggered it — that means no
+            // automatic back button/swipe-back the way a NavigationStack
+            // push would give it, so this Close button is the only way out.
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Close") {
+                    dismiss()
+                }
+            }
             // Summary, Bookmark, Markup, More — the two frequently-tapped,
             // single-action items (Bookmark, Markup) stay direct buttons;
             // Find/Contents/View Bookmarks are all "go somewhere else in
@@ -374,6 +388,9 @@ struct PDFViewerView: View {
                 isShowingBookmarks = true
             } label: {
                 Label("View Bookmarks", systemImage: "list.bullet")
+            }
+            ShareLink(item: URL(fileURLWithPath: sourceURL)) {
+                Label("Share PDF", systemImage: "square.and.arrow.up")
             }
         } label: {
             Image(systemName: "ellipsis.circle")

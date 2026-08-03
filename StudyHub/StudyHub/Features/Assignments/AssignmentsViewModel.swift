@@ -39,7 +39,8 @@ final class AssignmentsViewModel {
         priority: Priority,
         status: AssignmentStatus,
         description: String,
-        estimatedHours: Double
+        estimatedHours: Double,
+        attachments: [Attachment] = []
     ) {
         let assignment = Assignment(
             title: title,
@@ -53,6 +54,12 @@ final class AssignmentsViewModel {
 
         do {
             try assignmentRepository.create(assignment)
+            for attachment in attachments {
+                if AttachmentKind(rawValue: attachment.type)?.isFileBased == true {
+                    attachment.url = try AttachmentFileImporter.finalize(temporaryPath: attachment.url)
+                }
+                try assignmentRepository.createAttachment(attachment, for: assignment)
+            }
             loadAssignments()
         } catch let error as StudyHubError {
             loadError = error
@@ -104,6 +111,43 @@ final class AssignmentsViewModel {
         do {
             try assignmentRepository.save()
             loadAssignments()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
+
+    func addAttachment(to assignment: Assignment, filename: String, type: String, url: String) {
+        let attachment = Attachment(filename: filename, type: type, url: url)
+
+        do {
+            try assignmentRepository.createAttachment(attachment, for: assignment)
+            loadAssignments()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
+
+    func deleteAttachment(_ attachment: Attachment) {
+        do {
+            try assignmentRepository.deleteAttachment(attachment)
+            loadAssignments()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.deleteFailed(underlying: error)
+        }
+    }
+
+    /// Persists a PDF attachment's PencilKit markup — matches
+    /// `NotesViewModel.saveMarkup`/`LectureViewModel.saveMarkup`.
+    func saveMarkup(_ data: Data, for attachment: Attachment) {
+        attachment.markupData = data
+        do {
+            try assignmentRepository.save()
         } catch let error as StudyHubError {
             loadError = error
         } catch {

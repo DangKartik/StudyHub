@@ -16,12 +16,12 @@ struct SettingsView: View {
                     set: { userPreferences.userName = $0 }
                 ))
             } header: {
-                Text("Profile")
+                ListSectionHeaderLabel(title: "Profile", icon: "person.fill", tint: .blue)
             } footer: {
                 Text("Shown in Home's greeting. Leave blank to skip it.")
             }
 
-            Section("Appearance") {
+            Section {
                 Picker("Appearance", selection: Binding(
                     get: { userPreferences.appearance },
                     set: { userPreferences.appearance = $0 }
@@ -31,6 +31,8 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+            } header: {
+                ListSectionHeaderLabel(title: "Appearance", icon: "circle.righthalf.filled", tint: .purple)
             }
 
             Section {
@@ -39,18 +41,37 @@ struct SettingsView: View {
                     set: { userPreferences.weekStartsOnMonday = $0 }
                 ))
             } header: {
-                Text("Calendar")
+                ListSectionHeaderLabel(title: "Calendar", icon: "calendar", tint: .orange)
             } footer: {
                 Text("Controls how \"This Week\" and the Analytics heatmap group days into weeks. Off uses Sunday as the first day instead.")
             }
 
-            Section("About") {
+            Section {
+                Picker("Default Duration", selection: Binding(
+                    get: { userPreferences.defaultLectureDurationMinutes },
+                    set: { userPreferences.defaultLectureDurationMinutes = $0 }
+                )) {
+                    ForEach(Self.lectureDurationOptions, id: \.self) { minutes in
+                        Text(StudyTimeFormatter.label(minutes: minutes)).tag(minutes)
+                    }
+                }
+            } header: {
+                ListSectionHeaderLabel(title: "Lectures", icon: "list.bullet", tint: .pink)
+            } footer: {
+                Text("New lectures default to starting at the next full hour and ending this long after.")
+            }
+
+            Section {
                 LabeledContent("Version", value: appVersionText)
+            } header: {
+                ListSectionHeaderLabel(title: "About", icon: "info.circle.fill", tint: .gray)
             }
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private static let lectureDurationOptions = [30, 45, 60, 75, 90, 105, 120]
 
     private var appVersionText: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"

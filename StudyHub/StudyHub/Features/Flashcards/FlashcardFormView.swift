@@ -49,12 +49,12 @@ struct FlashcardFormView: View {
         NavigationStack {
             Form {
                 Section("Front") {
-                    TextEditor(text: $front)
+                    PlaceholderTextEditor(placeholder: "What's the question or prompt?", text: $front)
                         .frame(minHeight: 100)
                 }
 
                 Section("Back") {
-                    TextEditor(text: $back)
+                    PlaceholderTextEditor(placeholder: "What's the answer?", text: $back)
                         .frame(minHeight: 100)
                 }
 

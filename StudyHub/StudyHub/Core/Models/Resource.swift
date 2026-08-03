@@ -5,7 +5,7 @@ import SwiftData
 final class Resource {
     var id: UUID = UUID()
     var title: String = ""
-    var type: ResourceType = ResourceType.website
+    var type: AttachmentKind = AttachmentKind.link
     var url: String = ""
     var notes: String = ""
     var createdAt: Date = Date.now
@@ -22,7 +22,7 @@ final class Resource {
     init(
         id: UUID = UUID(),
         title: String,
-        type: ResourceType,
+        type: AttachmentKind,
         url: String = "",
         notes: String = "",
         createdAt: Date = Date.now,

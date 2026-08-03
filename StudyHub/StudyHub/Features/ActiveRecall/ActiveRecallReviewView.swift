@@ -93,30 +93,35 @@ struct ActiveRecallReviewView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, minHeight: 260)
-        .background(.background, in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.separator, lineWidth: 1))
+        .background(.background, in: RoundedRectangle(cornerRadius: StudyHubMetrics.flipCardCornerRadius))
+        .overlay(RoundedRectangle(cornerRadius: StudyHubMetrics.flipCardCornerRadius).stroke(.separator, lineWidth: 1))
         .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
     }
 
     private var ratingButtons: some View {
         HStack(spacing: 10) {
-            ratingButton(.again, color: .red)
-            ratingButton(.hard, color: .orange)
-            ratingButton(.good, color: .blue)
-            ratingButton(.easy, color: .green)
+            ratingButton(.again, icon: "arrow.uturn.backward", color: .red)
+            ratingButton(.hard, icon: "tortoise.fill", color: .orange)
+            ratingButton(.good, icon: "checkmark", color: .blue)
+            ratingButton(.easy, icon: "hare.fill", color: .green)
         }
     }
 
-    private func ratingButton(_ rating: RecallRating, color: Color) -> some View {
+    /// Icon-over-label, matching Flashcards' review buttons — same
+    /// tortoise/hare pairing for Hard/Easy.
+    private func ratingButton(_ rating: RecallRating, icon: String, color: Color) -> some View {
         Button {
             viewModel.rate(rating)
             isRevealed = false
         } label: {
-            Text(rating.label)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.subheadline.weight(.semibold))
+                Text(rating.label)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
         }
         .buttonStyle(.borderedProminent)
         .tint(color)
@@ -127,6 +132,7 @@ struct ActiveRecallReviewView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(.green)
+                .accessibilityHidden(true)
             Text("Review Complete")
                 .font(.title2)
                 .fontWeight(.bold)

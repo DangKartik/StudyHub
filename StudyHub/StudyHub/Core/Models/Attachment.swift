@@ -21,6 +21,7 @@ final class Attachment {
     var assignment: Assignment?
     var reading: Reading?
     var note: Note?
+    var assessment: Assessment?
 
     init(
         id: UUID = UUID(),

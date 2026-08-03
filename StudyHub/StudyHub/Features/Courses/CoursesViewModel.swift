@@ -32,23 +32,43 @@ final class CoursesViewModel {
     }
 
     var activeCourses: [Course] {
-        courses
-            .filter { !$0.isArchived && $0.semester?.id == appState.activeSemester?.id }
-            .sorted { $0.name < $1.name }
+        sortedByRecency(
+            courses.filter { !$0.isArchived && $0.semester?.id == appState.activeSemester?.id }
+        )
     }
 
+    /// Every non-active, non-archived semester — including ones with zero
+    /// courses. Previously this only surfaced semesters that already had at
+    /// least one course (grouped straight off the course list), so a
+    /// semester you'd created but hadn't added anything to yet was
+    /// completely invisible here. Sorted newest-first by start date.
     var otherSemesterCourses: [SemesterCourseGroup] {
         let activeID = appState.activeSemester?.id
-        let others = courses.filter {
-            !$0.isArchived && $0.semester != nil && $0.semester?.id != activeID
-        }
-        let grouped = Dictionary(grouping: others) { $0.semester!.id }
-        return grouped.values
-            .compactMap { group -> SemesterCourseGroup? in
-                guard let semester = group.first?.semester else { return nil }
-                return SemesterCourseGroup(semester: semester, courses: group.sorted { $0.name < $1.name })
+        let otherSemesters = semesters.filter { !$0.isArchived && $0.id != activeID }
+        return otherSemesters
+            .map { semester in
+                let semesterCourses = sortedByRecency(
+                    courses.filter { !$0.isArchived && $0.semester?.id == semester.id }
+                )
+                return SemesterCourseGroup(semester: semester, courses: semesterCourses)
             }
             .sorted { $0.semester.startDate > $1.semester.startDate }
+    }
+
+    /// Most-recently-opened first (`Course.lastOpenedAt`, bumped by
+    /// `CourseDetailViewModel.load()`); a course never opened has no
+    /// timestamp to rank by, so those fall after every opened course,
+    /// alphabetically among themselves — same fallback used everywhere else
+    /// in this list.
+    private func sortedByRecency(_ courses: [Course]) -> [Course] {
+        courses.sorted { lhs, rhs in
+            switch (lhs.lastOpenedAt, rhs.lastOpenedAt) {
+            case (let l?, let r?): return l > r
+            case (nil, nil): return lhs.name < rhs.name
+            case (nil, _): return false
+            case (_, nil): return true
+            }
+        }
     }
 
     var archivedCourses: [Course] {

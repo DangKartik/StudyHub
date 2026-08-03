@@ -65,7 +65,7 @@ struct CourseFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Course") {
+                Section {
                     TextField("Name", text: $name)
                     TextField("Course Code", text: $courseCode)
                     if isEditing {
@@ -78,9 +78,11 @@ struct CourseFormView: View {
                         LabeledContent("Semester", value: viewModel.activeSemester?.name ?? "No Semester")
                     }
                     Stepper("Credits: \(credits)", value: $credits, in: 0...12)
+                } header: {
+                    Label("Course", systemImage: "book.closed.fill")
                 }
 
-                Section("Professor 1") {
+                Section {
                     TextField("Name", text: $instructor)
                     TextField("Email", text: $email)
                         .textInputAutocapitalization(.never)
@@ -90,9 +92,11 @@ struct CourseFormView: View {
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
+                } header: {
+                    Label("Professor 1", systemImage: "person.fill")
                 }
 
-                Section("Professor 2") {
+                Section {
                     TextField("Name", text: $secondInstructor)
                     TextField("Email", text: $secondInstructorEmail)
                         .textInputAutocapitalization(.never)
@@ -102,53 +106,54 @@ struct CourseFormView: View {
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
+                } header: {
+                    Label("Professor 2", systemImage: "person.fill")
                 }
 
-                Section("Course Color") {
-                    ForEach(Self.presetColors, id: \.name) { preset in
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(preset.color)
-                                .frame(width: 20, height: 20)
-                            Text(preset.label)
-                            Spacer()
-                            if colorSelection == .preset(preset.name) {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(Color.accentColor)
+                Section {
+                    // A grid of tappable swatches, matching the same "tag
+                    // color" picker pattern Reminders/Calendar use, instead
+                    // of a checklist of circle+label rows — colors are
+                    // recognized faster by shape/hue than by reading down
+                    // a list of color names.
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 4), spacing: 16) {
+                        ForEach(Self.presetColors, id: \.name) { preset in
+                            colorSwatch(preset.color, isSelected: colorSelection == .preset(preset.name)) {
+                                colorSelection = .preset(preset.name)
                             }
+                            .accessibilityLabel(preset.label)
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            colorSelection = .preset(preset.name)
-                        }
-                    }
 
-                    HStack(spacing: 12) {
-                        if colorSelection == .custom {
-                            Circle()
-                                .fill(customColor)
-                                .frame(width: 20, height: 20)
-                        } else {
-                            MulticolorSwatchIcon()
-                                .frame(width: 20, height: 20)
+                        Button {
+                            colorSelection = .custom
+                            isShowingCustomColorPicker = true
+                        } label: {
+                            ZStack {
+                                if colorSelection == .custom {
+                                    Circle().fill(customColor)
+                                } else {
+                                    MulticolorSwatchIcon()
+                                }
+                                if colorSelection == .custom {
+                                    Image(systemName: "checkmark")
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(.white)
+                                        .shadow(color: .black.opacity(0.35), radius: 1)
+                                }
+                            }
+                            .frame(width: 36, height: 36)
                         }
-                        Text("Custom...")
-                        Spacer()
-                        if colorSelection == .custom {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Color.accentColor)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Custom Color")
+                        .popover(isPresented: $isShowingCustomColorPicker) {
+                            CustomColorPickerPanel(selectedColor: $customColor)
+                                .padding()
+                                .frame(width: 220, height: 220)
                         }
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        colorSelection = .custom
-                        isShowingCustomColorPicker = true
-                    }
-                    .popover(isPresented: $isShowingCustomColorPicker) {
-                        CustomColorPickerPanel(selectedColor: $customColor)
-                            .padding()
-                            .frame(width: 220, height: 220)
-                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Label("Course Color", systemImage: "paintpalette.fill")
                 }
             }
             .navigationTitle(isEditing ? "Edit Course" : "New Course")
@@ -211,5 +216,21 @@ struct CourseFormView: View {
                 }
             }
         }
+    }
+
+    private func colorSwatch(_ color: Color, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            ZStack {
+                Circle().fill(color)
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.35), radius: 1)
+                }
+            }
+            .frame(width: 36, height: 36)
+        }
+        .buttonStyle(.plain)
     }
 }

@@ -42,9 +42,10 @@ struct NoteBodyEditorView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 titleAndTags
+                attachmentsSection
 
-                if viewModel.isCourseScope {
-                    lecturePicker
+                if let lectureContext = viewModel.lectureContext(for: note) {
+                    lecturePicker(lectures: lectureContext.lectures)
                 }
 
                 Divider()
@@ -110,7 +111,7 @@ struct NoteBodyEditorView: View {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         if let note {
             viewModel.updateNote(note, title: trimmedTitle, body: bodyText, tags: tags)
-            if viewModel.isCourseScope, selectedLecture?.id != note.lecture?.id {
+            if viewModel.lectureContext(for: note) != nil, selectedLecture?.id != note.lecture?.id {
                 viewModel.updateNoteOwnership(note, lecture: selectedLecture)
             }
         } else {
@@ -154,21 +155,79 @@ struct NoteBodyEditorView: View {
         .padding(.top, 8)
     }
 
-    /// Shown from Course scope (DECISION-030) — lets a note optionally
-    /// target one of the course's Lectures instead of attaching directly to
-    /// the Course. Shown for both creation and editing: a note reached from
-    /// Course scope is always Course- or Lecture-owned (never
-    /// Reading-owned, see `NoteRepository.fetch(forCourseIncludingLectures:)`),
-    /// so re-linking it here is always well-defined.
+    /// The attachment sheet was saving a new attachment straight to the
+    /// note (for an already-existing note) or into `pendingAttachments`
+    /// (for a brand-new one) with nothing in this screen ever displaying
+    /// the result — it only became visible after leaving and reopening the
+    /// note. This mirrors the tag chips just above: every current
+    /// attachment shown right here, each with its own remove button.
+    private var currentAttachments: [Attachment] {
+        note?.attachments ?? pendingAttachments
+    }
+
+    @ViewBuilder
+    private var attachmentsSection: some View {
+        if !currentAttachments.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(currentAttachments, id: \.id) { attachment in
+                    HStack(spacing: 8) {
+                        AttachmentIconBadge(kind: AttachmentKind(rawValue: attachment.type), size: 24)
+                        Text(attachment.filename.isEmpty ? "Attachment" : attachment.filename)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                        Button {
+                            removeAttachment(attachment)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Remove \(attachment.filename)")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: StudyHubMetrics.cardCornerRadius))
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 4)
+        }
+    }
+
+    /// An existing note's attachment is already persisted (added straight
+    /// through `commitAttachment` the moment the sheet closes), so removing
+    /// it here deletes it right away too — same "attachments save
+    /// immediately, unlike title/tags/body" rule `commitAttachment`
+    /// documents. A brand-new note's attachment is only staged locally, so
+    /// removing it just drops it from `pendingAttachments` (and cleans up
+    /// its temp file if it's a PDF, same as a fully-discarded new note).
+    private func removeAttachment(_ attachment: Attachment) {
+        if note != nil {
+            viewModel.deleteAttachment(attachment)
+        } else {
+            pendingAttachments.removeAll { $0.id == attachment.id }
+            if AttachmentKind(rawValue: attachment.type)?.isFileBased == true {
+                AttachmentFileImporter.deleteTemporaryFile(at: attachment.url)
+            }
+        }
+    }
+
+    /// Lets a note optionally target one of its owning course's Lectures
+    /// instead of attaching directly to the Course — shown whenever
+    /// `NotesViewModel.lectureContext(for:)` can resolve an owning course,
+    /// which now works from every scope (Course/Lecture/Global), not just
+    /// Course scope. Shown for both creation and editing.
     /// Outside a `Form`/`List`, `Picker`'s own title never renders — only
     /// the selected value shows, as a bare menu button with no context for
     /// what it's choosing. An explicit leading label fixes that.
-    private var lecturePicker: some View {
+    private func lecturePicker(lectures: [Lecture]) -> some View {
         HStack(spacing: 8) {
             Text("Lecture")
             Picker("Lecture", selection: $selectedLecture) {
                 Text("Course Only").tag(nil as Lecture?)
-                ForEach(viewModel.availableLectures, id: \.id) { lecture in
+                ForEach(lectures, id: \.id) { lecture in
                     Text(lecture.topic).tag(Optional(lecture))
                 }
             }
@@ -212,7 +271,7 @@ struct NoteBodyEditorView: View {
     /// nothing to attach to yet, so its attachments stay staged in
     /// `pendingAttachments` until "Done" actually creates the note.
     private func commitAttachment(to note: Note, filename: String, type: String, value: String) {
-        guard type == AttachmentKind.pdf.rawValue else {
+        guard AttachmentKind(rawValue: type)?.isFileBased == true else {
             viewModel.addAttachment(to: note, filename: filename, type: type, url: value)
             return
         }
@@ -231,7 +290,7 @@ struct NoteBodyEditorView: View {
     /// attachments — called when this editor disappears without a new note
     /// having been saved (Cancel, swipe-to-dismiss, or any other dismissal).
     private func discardPendingAttachments() {
-        for attachment in pendingAttachments where attachment.type == AttachmentKind.pdf.rawValue {
+        for attachment in pendingAttachments where AttachmentKind(rawValue: attachment.type)?.isFileBased == true {
             AttachmentFileImporter.deleteTemporaryFile(at: attachment.url)
         }
     }

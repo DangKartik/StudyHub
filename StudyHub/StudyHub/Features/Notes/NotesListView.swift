@@ -82,8 +82,11 @@ struct NotesListView: View {
                     StudyHubEmptyState(
                         icon: "note.text",
                         title: "No Notes Yet",
-                        message: "Add a note to keep track of what matters."
-                    )
+                        message: "Add a note to keep track of what matters.",
+                        actionTitle: viewModel.supportsCreation ? "Add Note" : nil
+                    ) {
+                        isCreatingNote = true
+                    }
                 } else if displayedNotes.isEmpty {
                     StudyHubEmptyState(
                         icon: "line.3.horizontal.decrease.circle",
@@ -191,6 +194,14 @@ struct NotesListView: View {
                     }
                     .accessibilityAddTraits(.isButton)
                     .swipeActions(edge: .trailing) {
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            viewModel.deleteNote(note)
+                        }
+                    }
+                    .contextMenu {
+                        Button("Open", systemImage: "arrow.up.forward.app") {
+                            handleTap(on: note)
+                        }
                         Button("Delete", systemImage: "trash", role: .destructive) {
                             viewModel.deleteNote(note)
                         }

@@ -31,6 +31,7 @@ struct StudySessionSummaryView: View {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 56))
                     .foregroundStyle(.green)
+                    .accessibilityHidden(true)
 
                 Text("Session Complete")
                     .font(.title)
@@ -52,8 +53,8 @@ struct StudySessionSummaryView: View {
                     summaryRow(icon: "doc.text", label: "Pages Read", value: "\(session.pagesReadCount)")
                 }
                 .padding(.vertical, 4)
-                .background(.background, in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(.separator, lineWidth: 1))
+                .background(.background, in: RoundedRectangle(cornerRadius: StudyHubMetrics.cardCornerRadius))
+                .overlay(RoundedRectangle(cornerRadius: StudyHubMetrics.cardCornerRadius).stroke(.separator, lineWidth: 1))
                 .padding(.horizontal)
 
                 Spacer()

@@ -9,6 +9,7 @@ struct ResourceListView: View {
     @State private var activeSheet: ResourceSheet?
     @State private var resourcePendingDelete: Resource?
     @State private var resourceForPDFViewing: Resource?
+    @State private var resourceForImageViewing: Resource?
     @Environment(\.openURL) private var openURL
 
     init(
@@ -33,8 +34,11 @@ struct ResourceListView: View {
                 StudyHubEmptyState(
                     icon: "folder",
                     title: "No Resources Yet",
-                    message: "Add links, files, and reference material for this course."
-                )
+                    message: "Add links, files, and reference material for this course.",
+                    actionTitle: "Add Resource"
+                ) {
+                    activeSheet = .create
+                }
             } else {
                 list
             }
@@ -74,7 +78,7 @@ struct ResourceListView: View {
         } message: { resource in
             Text("\"\(resource.title)\" will be permanently deleted.")
         }
-        .navigationDestination(isPresented: Binding(
+        .fullScreenCover(isPresented: Binding(
             get: { resourceForPDFViewing != nil },
             set: { isPresented in
                 if !isPresented { resourceForPDFViewing = nil }
@@ -82,27 +86,41 @@ struct ResourceListView: View {
         )) {
             if let resourceForPDFViewing {
                 let resourceNotes = resourceForPDFViewing.notes.trimmingCharacters(in: .whitespacesAndNewlines)
-                PDFViewerView(
-                    title: resourceForPDFViewing.title,
-                    sourceURL: resourceForPDFViewing.url,
-                    summary: resourceNotes.isEmpty ? nil : resourceNotes,
-                    onSummaryEdit: { newNotes in
-                        viewModel.updateResource(
-                            resourceForPDFViewing,
-                            title: resourceForPDFViewing.title,
-                            type: resourceForPDFViewing.type,
-                            url: resourceForPDFViewing.url,
-                            notes: newNotes
-                        )
-                    },
-                    initialMarkupData: resourceForPDFViewing.markupData,
-                    onMarkupSave: { data in
-                        viewModel.saveMarkup(data, for: resourceForPDFViewing)
-                    },
-                    bookmarkRepository: bookmarkRepository,
-                    pdfProgressRepository: pdfProgressRepository,
-                    pdfService: pdfService
-                )
+                NavigationStack {
+                    PDFViewerView(
+                        title: resourceForPDFViewing.title,
+                        sourceURL: resourceForPDFViewing.url,
+                        summary: resourceNotes.isEmpty ? nil : resourceNotes,
+                        onSummaryEdit: { newNotes in
+                            viewModel.updateResource(
+                                resourceForPDFViewing,
+                                title: resourceForPDFViewing.title,
+                                type: resourceForPDFViewing.type,
+                                url: resourceForPDFViewing.url,
+                                notes: newNotes
+                            )
+                        },
+                        initialMarkupData: resourceForPDFViewing.markupData,
+                        onMarkupSave: { data in
+                            viewModel.saveMarkup(data, for: resourceForPDFViewing)
+                        },
+                        bookmarkRepository: bookmarkRepository,
+                        pdfProgressRepository: pdfProgressRepository,
+                        pdfService: pdfService
+                    )
+                }
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { resourceForImageViewing != nil },
+            set: { isPresented in
+                if !isPresented { resourceForImageViewing = nil }
+            }
+        )) {
+            if let resourceForImageViewing {
+                NavigationStack {
+                    ImageViewerView(resource: resourceForImageViewing)
+                }
             }
         }
         .onAppear {
@@ -135,14 +153,22 @@ struct ResourceListView: View {
                         }
                         .tint(.blue)
                     }
+                    .contextMenu {
+                        Button("Edit", systemImage: "pencil") {
+                            activeSheet = .edit(resource)
+                        }
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            resourcePendingDelete = resource
+                        }
+                    }
             }
         }
         .listStyle(.insetGrouped)
     }
 
-    /// Primary row action: PDFs open in the PDF viewer; every other type with a
-    /// non-empty URL opens via `openURL`. Resources with nothing to open (empty
-    /// URL) fall back to Edit, since there's no destination to open. Editing is
+    /// Primary row action: PDFs and Images open in their in-app viewers;
+    /// Link opens via `openURL`. Resources with nothing to open (empty URL)
+    /// fall back to Edit, since there's no destination to open. Editing is
     /// always still reachable via the "Edit" swipe action.
     private func handleTap(on resource: Resource) {
         guard !resource.url.isEmpty else {
@@ -150,12 +176,17 @@ struct ResourceListView: View {
             return
         }
 
-        if resource.type == .pdf {
+        switch resource.type {
+        case .pdf:
             resourceForPDFViewing = resource
-        } else if let url = URL(string: resource.url) {
-            openURL(url)
-        } else {
-            activeSheet = .edit(resource)
+        case .image:
+            resourceForImageViewing = resource
+        case .link:
+            if let url = URL.openable(from: resource.url) {
+                openURL(url)
+            } else {
+                activeSheet = .edit(resource)
+            }
         }
     }
 }
@@ -176,32 +207,44 @@ private struct ResourceRowView: View {
     let resource: Resource
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
+        HStack(spacing: 12) {
+            Image(systemName: resource.type.icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(resource.type.color.opacity(0.85))
+                .frame(width: 36, height: 36)
+                .background(resource.type.color.opacity(0.14), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text(resource.title)
                     .font(.headline)
-                Spacer()
-                Text(resource.type.label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
 
-            HStack(spacing: 6) {
-                if !resource.url.isEmpty {
-                    Label("Link", systemImage: "link")
-                }
                 if !resource.notes.isEmpty {
                     Text(resource.notes)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Text(resource.type.label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(resource.type.color)
+                .padding(.horizontal, StudyHubMetrics.chipHorizontalPadding + 2)
+                .padding(.vertical, StudyHubMetrics.chipVerticalPadding + 1)
+                .background(resource.type.color.opacity(0.14), in: Capsule())
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
+        .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "\(resource.title). \(resource.type.label)." +
-            (resource.url.isEmpty ? "" : " Has a link.") +
             (resource.notes.isEmpty ? "" : " \(resource.notes).")
         )
     }

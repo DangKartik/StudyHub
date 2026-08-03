@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppShellDetailView: View {
     let destination: SidebarDestination?
+    let navigationRouter: NavigationRouter
     let appState: AppState
     let userPreferences: UserPreferences
     let semesterRepository: any SemesterRepositoryProtocol
@@ -63,7 +64,9 @@ struct AppShellDetailView: View {
                 noteRepository: noteRepository,
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
-                pdfService: pdfService
+                pdfService: pdfService,
+                studySessionRepository: studySessionRepository,
+                userPreferences: userPreferences
             )
         case .notes:
             NotesListView(
@@ -89,6 +92,7 @@ struct AppShellDetailView: View {
             )
         case .studyMode:
             StudyModeView(
+                navigationRouter: navigationRouter,
                 courseRepository: courseRepository,
                 studySessionRepository: studySessionRepository,
                 readingRepository: readingRepository,
@@ -102,7 +106,9 @@ struct AppShellDetailView: View {
             )
         case .statistics:
             AnalyticsView(
+                appState: appState,
                 courseRepository: courseRepository,
+                semesterRepository: semesterRepository,
                 readingRepository: readingRepository,
                 pdfProgressRepository: pdfProgressRepository,
                 flashcardRepository: flashcardRepository,

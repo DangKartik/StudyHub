@@ -71,11 +71,15 @@ struct FlashcardReviewView: View {
             face(label: "Question", text: card.front)
                 .opacity(isFlipped ? 0 : 1)
                 .rotation3DEffect(.degrees(isFlipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+                .accessibilityHidden(isFlipped)
 
             face(label: "Answer", text: card.back)
                 .opacity(isFlipped ? 1 : 0)
                 .rotation3DEffect(.degrees(isFlipped ? 0 : -180), axis: (x: 0, y: 1, z: 0))
+                .accessibilityHidden(!isFlipped)
         }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(isFlipped ? "" : "Double tap to reveal the answer")
     }
 
     private func face(label: String, text: String) -> some View {
@@ -90,29 +94,36 @@ struct FlashcardReviewView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, minHeight: 260)
-        .background(.background, in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.separator, lineWidth: 1))
+        .background(.background, in: RoundedRectangle(cornerRadius: StudyHubMetrics.flipCardCornerRadius))
+        .overlay(RoundedRectangle(cornerRadius: StudyHubMetrics.flipCardCornerRadius).stroke(.separator, lineWidth: 1))
         .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
     }
 
     private var ratingButtons: some View {
-        HStack(spacing: 12) {
-            ratingButton("Again", color: .red, rating: .again)
-            ratingButton("Hard", color: .orange, rating: .hard)
-            ratingButton("Good", color: .blue, rating: .good)
-            ratingButton("Easy", color: .green, rating: .easy)
+        HStack(spacing: 10) {
+            ratingButton("Again", icon: "arrow.uturn.backward", color: .red, rating: .again)
+            ratingButton("Hard", icon: "tortoise.fill", color: .orange, rating: .hard)
+            ratingButton("Good", icon: "checkmark", color: .blue, rating: .good)
+            ratingButton("Easy", icon: "hare.fill", color: .green, rating: .easy)
         }
     }
 
-    private func ratingButton(_ title: String, color: Color, rating: FlashcardRating) -> some View {
+    /// Icon-over-label instead of a bare word, and a tortoise/hare pairing
+    /// for Hard/Easy specifically — reads faster at a glance than four
+    /// same-shaped text buttons that only differ by color and word choice.
+    private func ratingButton(_ title: String, icon: String, color: Color, rating: FlashcardRating) -> some View {
         Button {
             viewModel.rate(rating)
             isFlipped = false
         } label: {
-            Text(title)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.subheadline.weight(.semibold))
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
         }
         .buttonStyle(.borderedProminent)
         .tint(color)
@@ -123,6 +134,7 @@ struct FlashcardReviewView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(.green)
+                .accessibilityHidden(true)
             Text("Review Complete")
                 .font(.title2)
                 .fontWeight(.bold)

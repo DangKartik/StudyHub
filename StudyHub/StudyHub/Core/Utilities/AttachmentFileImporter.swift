@@ -15,6 +15,23 @@ enum AttachmentFileImporter {
         try copyFile(from: sourceURL, into: temporaryStagingDirectory())
     }
 
+    /// Same staging step as `importToTemporaryStorage(from:)`, but for raw
+    /// `Data` rather than a source `URL` — `PhotosPicker` hands back an
+    /// image's bytes directly, not a file on disk, so there's nothing to
+    /// `copyItem(at:to:)` from.
+    static func importDataToTemporaryStorage(_ data: Data, filename: String) throws -> (path: String, filename: String) {
+        let destinationURL = try temporaryStagingDirectory()
+            .appendingPathComponent("\(UUID().uuidString)-\(filename)")
+
+        do {
+            try data.write(to: destinationURL)
+        } catch {
+            throw AttachmentImportError.copyFailed
+        }
+
+        return (destinationURL.path, filename)
+    }
+
     /// Moves a temporarily-staged file into permanent attachment storage,
     /// returning its new, permanent path.
     static func finalize(temporaryPath: String) throws -> String {

@@ -146,7 +146,31 @@ enum GreetingLibrary {
         .init(text: "Another day, another lesson", window: .any),
         .init(text: "Keep the streak alive", window: .any),
         .init(text: "Learning never stops", window: .any),
-        .init(text: "Let's get to work", window: .any)
+        .init(text: "Let's get to work", window: .any),
+        .init(text: "Rise and grind", window: .morning),
+        .init(text: "Good morning, let's go", window: .morning),
+        .init(text: "First cup, first page", window: .morning),
+        .init(text: "Fresh page, fresh you", window: .morning),
+        .init(text: "Start before you're ready", window: .morning),
+        .init(text: "Good afternoon, keep it up", window: .afternoon),
+        .init(text: "One more push before the day's out", window: .afternoon),
+        .init(text: "Afternoon reset", window: .afternoon),
+        .init(text: "Still time to make today count", window: .afternoon),
+        .init(text: "Good evening, almost there", window: .evening),
+        .init(text: "Evening review time", window: .evening),
+        .init(text: "One more session before you rest", window: .evening),
+        .init(text: "Close the day out strong", window: .evening),
+        .init(text: "Still awake, still capable", window: .night),
+        .init(text: "Night owl mode", window: .night),
+        .init(text: "The quiet hours are yours", window: .night),
+        .init(text: "One more page before bed", window: .night),
+        .init(text: "You again? Let's finish this", window: .any),
+        .init(text: "Back for more, nice", window: .any),
+        .init(text: "Today counts too", window: .any),
+        .init(text: "Let's turn effort into progress", window: .any),
+        .init(text: "Open the book, close the gap", window: .any),
+        .init(text: "Your streak is watching", window: .any),
+        .init(text: "Show up, even a little", window: .any)
     ]
 
     private static func window(for hour: Int) -> GreetingTimeWindow {
