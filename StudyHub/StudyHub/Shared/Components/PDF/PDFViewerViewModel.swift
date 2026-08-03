@@ -215,7 +215,15 @@ final class PDFViewerViewModel {
         in document: PDFDocument,
         options: NSString.CompareOptions
     ) async -> [PDFSelection] {
-        await withCheckedContinuation { continuation in
+        // `PDFDocument` isn't `Sendable`, so capturing it in the `@Sendable`
+        // closure below trips strict concurrency checking — but every call
+        // here is already funneled through the single serial `searchQueue`
+        // (see its doc comment), so there's no actual concurrent access to
+        // guard against. `nonisolated(unsafe)` tells the compiler that's a
+        // deliberate, already-safe capture rather than working around the
+        // check some less direct way.
+        nonisolated(unsafe) let document = document
+        return await withCheckedContinuation { continuation in
             searchQueue.async {
                 continuation.resume(returning: document.findString(query, withOptions: options))
             }

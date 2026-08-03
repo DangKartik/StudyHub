@@ -72,20 +72,48 @@ struct CourseDistributionChart: View {
         return top + [CourseDistributionPoint(courseName: "Other", minutes: otherMinutes)]
     }
 
+    /// Swift Charts' automatic legend (from `.foregroundStyle(by:)`) has no
+    /// supported way to enlarge its text — a `.font()` on the `Chart`
+    /// itself is silently ignored by the legend specifically. Assigning
+    /// colors explicitly here, instead of letting Charts pick them, means
+    /// a plain custom `Text` legend below can use the exact same colors
+    /// and any font size we want.
+    private static let palette: [Color] = [.blue, .green, .orange, .purple, .pink, .teal, .indigo, .red]
+
+    private func color(for index: Int) -> Color {
+        Self.palette[index % Self.palette.count]
+    }
+
     var body: some View {
         if data.isEmpty {
             StudyHubEmptyState(icon: "chart.pie", title: "No Study Time Yet", message: "Complete a Study Session to see this chart.")
         } else {
-            Chart(displayData) { point in
-                SectorMark(
-                    angle: .value("Minutes", point.minutes),
-                    innerRadius: .ratio(0.5),
-                    angularInset: 1.5
-                )
-                .foregroundStyle(by: .value("Course", point.courseName))
-                .cornerRadius(4)
+            VStack(spacing: 16) {
+                Chart(Array(displayData.enumerated()), id: \.element.id) { index, point in
+                    SectorMark(
+                        angle: .value("Minutes", point.minutes),
+                        innerRadius: .ratio(0.5),
+                        angularInset: 1.5
+                    )
+                    .foregroundStyle(color(for: index))
+                    .cornerRadius(4)
+                }
+                .frame(height: 220)
+                .chartLegend(.hidden)
+
+                TagFlowLayout(spacing: 12) {
+                    ForEach(Array(displayData.enumerated()), id: \.element.id) { index, point in
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(color(for: index))
+                                .frame(width: 10, height: 10)
+                            Text(point.courseName)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                }
             }
-            .frame(height: 220)
         }
     }
 }
@@ -136,11 +164,16 @@ struct ReadingProgressChart: View {
                 .foregroundStyle(Color.accentColor)
                 .annotation(position: .trailing) {
                     Text("\(Int(point.percent))%")
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .chartXScale(domain: 0...100)
+            // A 100%-complete course's bar would otherwise reach the exact
+            // right edge of the plot area, leaving its "100%" annotation
+            // nowhere to draw but off the edge of the screen — extra
+            // headroom in the domain keeps every bar (and its label) short
+            // of that edge instead of clipping it.
+            .chartXScale(domain: 0...115)
             .frame(height: CGFloat(data.count) * 36 + 20)
         }
     }
@@ -240,7 +273,7 @@ struct StudyCalendarMonthView: View {
         HStack(spacing: 6) {
             ForEach(weekdayLabels, id: \.self) { label in
                 Text(label.uppercased())
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
             }

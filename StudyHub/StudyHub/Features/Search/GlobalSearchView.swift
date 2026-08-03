@@ -59,7 +59,16 @@ struct GlobalSearchView: View {
 
     var body: some View {
         Group {
-            if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if let error = viewModel.loadError {
+                StudyHubEmptyState(
+                    icon: "exclamationmark.triangle",
+                    title: "Couldn't Load Search",
+                    message: error.message,
+                    actionTitle: "Retry"
+                ) {
+                    viewModel.loadAll()
+                }
+            } else if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 StudyHubEmptyState(
                     icon: "magnifyingglass",
                     title: "Search StudyHub",

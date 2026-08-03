@@ -3,22 +3,38 @@ import SwiftUI
 struct GradesListView: View {
     @State private var viewModel: GradesViewModel
     @State private var activeSheet: GradeSheet?
+    @Environment(\.colorScheme) private var colorScheme
+    let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
+    let pdfService: any PDFServiceProtocol
 
-    init(course: Course, courseRepository: any CourseRepositoryProtocol) {
+    init(
+        course: Course,
+        courseRepository: any CourseRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
+    ) {
         _viewModel = State(wrappedValue: GradesViewModel(
             course: course,
             courseRepository: courseRepository
         ))
+        self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
+        self.pdfService = pdfService
     }
 
     var body: some View {
         Group {
-            if viewModel.gradeCategories.isEmpty && viewModel.quizzes.isEmpty && viewModel.exams.isEmpty {
+            if viewModel.assessments.isEmpty {
                 StudyHubEmptyState(
                     icon: "chart.bar",
                     title: "No Grades Yet",
-                    message: "Add grade categories, quizzes, and exams to track this course."
-                )
+                    message: "Add a quiz or exam to start tracking this course.",
+                    actionTitle: "Add Quiz or Exam"
+                ) {
+                    activeSheet = .createAssessment
+                }
             } else {
                 list
             }
@@ -26,16 +42,8 @@ struct GradesListView: View {
         .navigationTitle("Grades")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("Add Grade Category", systemImage: "chart.pie") {
-                        activeSheet = .createCategory
-                    }
-                    Button("Add Quiz", systemImage: "pencil.and.list.clipboard") {
-                        activeSheet = .createQuiz
-                    }
-                    Button("Add Exam", systemImage: "graduationcap") {
-                        activeSheet = .createExam
-                    }
+                Button {
+                    activeSheet = .createAssessment
                 } label: {
                     Label("Add", systemImage: "plus")
                 }
@@ -43,18 +51,22 @@ struct GradesListView: View {
         }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
-            case .createCategory:
-                GradeCategoryFormView(viewModel: viewModel, gradeCategory: nil)
-            case .editCategory(let category):
-                GradeCategoryFormView(viewModel: viewModel, gradeCategory: category)
-            case .createQuiz:
-                QuizFormView(viewModel: viewModel, quiz: nil)
-            case .editQuiz(let quiz):
-                QuizFormView(viewModel: viewModel, quiz: quiz)
-            case .createExam:
-                ExamFormView(viewModel: viewModel, exam: nil)
-            case .editExam(let exam):
-                ExamFormView(viewModel: viewModel, exam: exam)
+            case .createAssessment:
+                AssessmentFormView(
+                    viewModel: viewModel,
+                    assessment: nil,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
+                    pdfService: pdfService
+                )
+            case .editAssessment(let assessment):
+                AssessmentFormView(
+                    viewModel: viewModel,
+                    assessment: assessment,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
+                    pdfService: pdfService
+                )
             }
         }
         .onAppear {
@@ -72,172 +84,170 @@ struct GradesListView: View {
             }
 
             Section {
-                if let currentGrade = viewModel.currentGrade {
-                    Text("\(currentGrade, specifier: "%.1f")%")
-                        .font(.largeTitle.bold())
-                } else {
-                    Text("No Grade Yet")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+                gradeHeroCard
+
+                Picker(selection: Binding(
+                    get: { viewModel.finalLetterGrade },
+                    set: { viewModel.setFinalLetterGrade($0) }
+                )) {
+                    Text("Not Final Yet").tag(nil as LetterGrade?)
+                    ForEach(viewModel.isPassFail ? LetterGrade.passFailCases : LetterGrade.standardCases, id: \.self) { letter in
+                        Text(letter.rawValue).tag(Optional(letter))
+                    }
+                } label: {
+                    Label("Final Letter Grade", systemImage: "rosette")
                 }
-            } header: {
-                Text("Current Grade")
+
+                Toggle(isOn: Binding(
+                    get: { viewModel.isPassFail },
+                    set: { viewModel.setPassFail($0) }
+                )) {
+                    Label("Pass/Fail Course", systemImage: "checkmark.circle")
+                }
+            } footer: {
+                Text(viewModel.isPassFail
+                    ? "Pass/Fail courses count toward credits completed, never toward GPA."
+                    : "Set the Final Letter Grade once this course is fully graded — it's what feeds your GPA in Analytics.")
             }
 
-            if !viewModel.gradeCategories.isEmpty {
-                Section("Grade Categories") {
-                    ForEach(viewModel.gradeCategories, id: \.id) { category in
-                        GradeCategoryRowView(category: category)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                activeSheet = .editCategory(category)
+            Section("Quizzes & Exams") {
+                ForEach(viewModel.assessments, id: \.id) { assessment in
+                    AssessmentRowView(assessment: assessment)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            activeSheet = .editAssessment(assessment)
+                        }
+                        .accessibilityAddTraits(.isButton)
+                        .swipeActions(edge: .trailing) {
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                viewModel.deleteAssessment(assessment)
                             }
-                            .accessibilityAddTraits(.isButton)
-                            .swipeActions(edge: .trailing) {
-                                Button("Delete", systemImage: "trash", role: .destructive) {
-                                    viewModel.deleteGradeCategory(category)
-                                }
-                            }
-                    }
-                }
-            }
-
-            if !viewModel.quizzes.isEmpty {
-                Section("Quizzes") {
-                    ForEach(viewModel.quizzes, id: \.id) { quiz in
-                        QuizRowView(quiz: quiz)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                activeSheet = .editQuiz(quiz)
-                            }
-                            .accessibilityAddTraits(.isButton)
-                            .swipeActions(edge: .trailing) {
-                                Button("Delete", systemImage: "trash", role: .destructive) {
-                                    viewModel.deleteQuiz(quiz)
-                                }
-                            }
-                    }
-                }
-            }
-
-            if !viewModel.exams.isEmpty {
-                Section("Exams") {
-                    ForEach(viewModel.exams, id: \.id) { exam in
-                        ExamRowView(exam: exam)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                activeSheet = .editExam(exam)
-                            }
-                            .accessibilityAddTraits(.isButton)
-                            .swipeActions(edge: .trailing) {
-                                Button("Delete", systemImage: "trash", role: .destructive) {
-                                    viewModel.deleteExam(exam)
-                                }
-                            }
-                    }
+                        }
                 }
             }
         }
         .listStyle(.insetGrouped)
     }
+
+    /// Same "tinted hero" composition as Home's greeting card — once a
+    /// Final Letter Grade is set, this swaps from the plain percentage to
+    /// the letter itself, tinted by grade quality (green for A-range, red
+    /// for F, etc.) rather than a fixed accent color, so the color itself
+    /// carries information. The Final Letter Grade picker stays a normal
+    /// row right below it either way — this only changes what's shown
+    /// above, never whether it's still changeable.
+    private var gradeHeroCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let letter = viewModel.finalLetterGrade {
+                Text("Final Grade")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(letter.tintColor)
+                Text(letter.rawValue)
+                    .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+            } else if let currentGrade = viewModel.currentGrade {
+                Text("Current Grade")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("\(currentGrade, specifier: "%.1f")%")
+                    .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+            } else {
+                Text("Current Grade")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("No Grade Yet")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(heroBackground, in: RoundedRectangle(cornerRadius: StudyHubMetrics.cardCornerRadius))
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
+    }
+
+    private var heroTint: Color {
+        viewModel.finalLetterGrade?.tintColor ?? .accentColor
+    }
+
+    private var heroBackground: some ShapeStyle {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [heroTint.opacity(0.35), heroTint.opacity(0.12)]
+                : [heroTint.opacity(0.16), heroTint.opacity(0.03)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 }
 
 private enum GradeSheet: Identifiable {
-    case createCategory
-    case editCategory(GradeCategory)
-    case createQuiz
-    case editQuiz(Quiz)
-    case createExam
-    case editExam(Exam)
+    case createAssessment
+    case editAssessment(Assessment)
 
     var id: String {
         switch self {
-        case .createCategory: return "createCategory"
-        case .editCategory(let category): return category.id.uuidString
-        case .createQuiz: return "createQuiz"
-        case .editQuiz(let quiz): return quiz.id.uuidString
-        case .createExam: return "createExam"
-        case .editExam(let exam): return exam.id.uuidString
+        case .createAssessment: return "createAssessment"
+        case .editAssessment(let assessment): return assessment.id.uuidString
         }
     }
 }
 
-private struct GradeCategoryRowView: View {
-    let category: GradeCategory
+private struct AssessmentRowView: View {
+    let assessment: Assessment
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(category.title)
+        HStack(spacing: 12) {
+            Image(systemName: assessment.kind.icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(assessment.kind.color)
+                .frame(width: 36, height: 36)
+                .background(assessment.kind.color.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(assessment.title)
                     .font(.headline)
-                Text("Weight: \(category.weight, specifier: "%.0f")%")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Text("\(category.earnedScore, specifier: "%.0f") / \(category.maximumScore, specifier: "%.0f")")
-                .font(.subheadline)
+                HStack(spacing: 6) {
+                    Text(assessment.kind.label)
+                    Text("· \(assessment.date.formatted(date: .abbreviated, time: .shortened))")
+                    if !assessment.location.isEmpty {
+                        Text("· \(assessment.location)")
+                    }
+                }
+                .font(.caption)
                 .foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(category.title). Weight \(Int(category.weight)) percent. " +
-            "Score \(Int(category.earnedScore)) of \(Int(category.maximumScore))."
-        )
-    }
-}
-
-private struct QuizRowView: View {
-    let quiz: Quiz
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(quiz.title)
-                    .font(.headline)
-                Text(quiz.date.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .lineLimit(1)
             }
-            Spacer()
-            if let score = quiz.score {
-                Text("\(score, specifier: "%.0f") / \(quiz.maximumScore, specifier: "%.0f")")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Not Graded")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(quiz.title). \(quiz.date.formatted(date: .abbreviated, time: .omitted))." +
-            (quiz.score.map { " Score \(Int($0)) of \(Int(quiz.maximumScore))." } ?? " Not graded.")
-        )
-    }
-}
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-private struct ExamRowView: View {
-    let exam: Exam
+            Spacer(minLength: 8)
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(exam.title)
-                .font(.headline)
-            HStack(spacing: 6) {
-                Text(exam.date.formatted(date: .abbreviated, time: .omitted))
-                if !exam.location.isEmpty {
-                    Text("· \(exam.location)")
+            VStack(alignment: .trailing, spacing: 4) {
+                if let score = assessment.score {
+                    Text("\(score, specifier: "%.0f") / \(assessment.maximumScore, specifier: "%.0f")")
+                        .font(.subheadline.weight(.medium))
+                } else {
+                    Text("Not Graded")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let rating = assessment.reflectionRating {
+                    HStack(spacing: 2) {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                        Text("\(rating)")
+                            .font(.caption2.weight(.medium))
+                    }
+                    .foregroundStyle(.yellow)
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(exam.title). \(exam.date.formatted(date: .abbreviated, time: .omitted))." +
-            (exam.location.isEmpty ? "" : " \(exam.location).")
+            "\(assessment.kind.label): \(assessment.title). \(assessment.date.formatted(date: .abbreviated, time: .omitted))." +
+            (assessment.location.isEmpty ? "" : " \(assessment.location).") +
+            (assessment.score.map { " Score \(Int($0)) of \(Int(assessment.maximumScore))." } ?? " Not graded.") +
+            (assessment.reflectionRating.map { " Your reflection: \($0) of 5 stars." } ?? "")
         )
     }
 }

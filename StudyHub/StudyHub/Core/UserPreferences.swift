@@ -40,6 +40,7 @@ final class UserPreferences {
     private static let weekStartsOnMondayKey = "weekStartsOnMonday"
     private static let appearanceKey = "appearancePreference"
     private static let userNameKey = "userName"
+    private static let defaultLectureDurationMinutesKey = "defaultLectureDurationMinutes"
 
     private let defaults: UserDefaults
 
@@ -66,6 +67,15 @@ final class UserPreferences {
         }
     }
 
+    /// How long a new Lecture's End Time defaults to after Start Time —
+    /// used only when creating a Lecture (see `LectureFormView`). Defaults
+    /// to 60, a plain hour-long class being the most common case.
+    var defaultLectureDurationMinutes: Int {
+        didSet {
+            defaults.set(defaultLectureDurationMinutes, forKey: Self.defaultLectureDurationMinutesKey)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if defaults.object(forKey: Self.weekStartsOnMondayKey) == nil {
@@ -81,6 +91,12 @@ final class UserPreferences {
         }
 
         userName = defaults.string(forKey: Self.userNameKey) ?? ""
+
+        if defaults.object(forKey: Self.defaultLectureDurationMinutesKey) == nil {
+            defaultLectureDurationMinutes = 60
+        } else {
+            defaultLectureDurationMinutes = defaults.integer(forKey: Self.defaultLectureDurationMinutesKey)
+        }
     }
 
     /// A `Calendar` configured to agree with this preference — pass this

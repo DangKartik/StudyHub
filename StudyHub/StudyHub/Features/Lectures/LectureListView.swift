@@ -7,6 +7,7 @@ struct LectureListView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let userPreferences: UserPreferences
 
     @State private var viewModel: LectureViewModel
     @State private var activeSheet: LectureSheet?
@@ -21,7 +22,8 @@ struct LectureListView: View {
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
-        pdfService: any PDFServiceProtocol
+        pdfService: any PDFServiceProtocol,
+        userPreferences: UserPreferences
     ) {
         self.activeRecallRepository = activeRecallRepository
         self.flashcardRepository = flashcardRepository
@@ -29,6 +31,7 @@ struct LectureListView: View {
         self.bookmarkRepository = bookmarkRepository
         self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
+        self.userPreferences = userPreferences
         _viewModel = State(wrappedValue: LectureViewModel(
             course: course,
             lectureRepository: lectureRepository
@@ -41,8 +44,11 @@ struct LectureListView: View {
                 StudyHubEmptyState(
                     icon: "calendar.badge.plus",
                     title: "No Lectures Yet",
-                    message: "Add lectures to organize your course schedule."
-                )
+                    message: "Add lectures to organize your course schedule.",
+                    actionTitle: "Add Lecture"
+                ) {
+                    activeSheet = .create
+                }
             } else {
                 list
             }
@@ -60,9 +66,23 @@ struct LectureListView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .create:
-                LectureFormView(viewModel: viewModel, lecture: nil)
+                LectureFormView(
+                    viewModel: viewModel,
+                    lecture: nil,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
+                    pdfService: pdfService,
+                    userPreferences: userPreferences
+                )
             case .edit(let lecture):
-                LectureFormView(viewModel: viewModel, lecture: lecture)
+                LectureFormView(
+                    viewModel: viewModel,
+                    lecture: lecture,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
+                    pdfService: pdfService,
+                    userPreferences: userPreferences
+                )
             }
         }
         .navigationDestination(isPresented: Binding(
@@ -111,21 +131,38 @@ struct LectureListView: View {
             }
 
             ForEach(viewModel.lectures, id: \.id) { lecture in
-                LectureRowView(
-                    lecture: lecture,
-                    onViewActiveRecall: { lectureForActiveRecall = lecture },
-                    onViewNotes: { lectureForNotes = lecture }
-                )
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    activeSheet = .edit(lecture)
-                }
-                .accessibilityAddTraits(.isButton)
-                .swipeActions(edge: .trailing) {
-                    Button("Delete", systemImage: "trash", role: .destructive) {
-                        viewModel.deleteLecture(lecture)
+                LectureRowView(lecture: lecture)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        activeSheet = .edit(lecture)
                     }
-                }
+                    .accessibilityAddTraits(.isButton)
+                    .swipeActions(edge: .trailing) {
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            viewModel.deleteLecture(lecture)
+                        }
+
+                        Button("Notes", systemImage: "note.text") {
+                            lectureForNotes = lecture
+                        }
+                        .tint(.teal)
+
+                        Button("Active Recall", systemImage: "brain.head.profile") {
+                            lectureForActiveRecall = lecture
+                        }
+                        .tint(.purple)
+                    }
+                    .contextMenu {
+                        Button("Active Recall", systemImage: "brain.head.profile") {
+                            lectureForActiveRecall = lecture
+                        }
+                        Button("Notes", systemImage: "note.text") {
+                            lectureForNotes = lecture
+                        }
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            viewModel.deleteLecture(lecture)
+                        }
+                    }
             }
         }
         .listStyle(.insetGrouped)
@@ -144,47 +181,79 @@ private enum LectureSheet: Identifiable {
     }
 }
 
+/// No more inline "Active Recall"/"Notes" buttons crammed into the row —
+/// same lesson as `CourseRowView`'s own redesign (a per-feature button strip
+/// stops fitting once there's more than one or two of them). Both are still
+/// reachable, just via swipe actions and the context menu instead of taking
+/// up permanent space in every row.
 private struct LectureRowView: View {
     let lecture: Lecture
-    var onViewActiveRecall: (() -> Void)? = nil
-    var onViewNotes: (() -> Void)? = nil
+
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM"
+        return formatter
+    }()
+
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter
+    }()
+
+    private var timeRangeText: String {
+        "\(lecture.startTime.formatted(date: .omitted, time: .shortened)) – \(lecture.endTime.formatted(date: .omitted, time: .shortened))"
+    }
+
+    /// A Calendar-app-style date badge (month + day) instead of a single
+    /// generic icon repeated identically on every row — this actually
+    /// carries information (which day this lecture falls on, at a glance)
+    /// rather than just decoration, and gives the date its own visual
+    /// block so the text lines next to it don't have to cram date and time
+    /// together into one run-on line.
+    private var dateBadge: some View {
+        VStack(spacing: 1) {
+            Text(Self.monthFormatter.string(from: lecture.date).uppercased())
+                .font(.caption2.weight(.bold))
+            Text(Self.dayFormatter.string(from: lecture.date))
+                .font(.title3.weight(.bold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(.pink)
+        .frame(width: 46, height: 46)
+        .background(Color.pink.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityHidden(true)
+    }
 
     var body: some View {
-        HStack {
+        HStack(spacing: 14) {
+            dateBadge
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(lecture.topic)
                     .font(.headline)
-                HStack(spacing: 6) {
-                    Text(lecture.date.formatted(date: .abbreviated, time: .omitted))
-                    if !lecture.location.isEmpty {
-                        Text("· \(lecture.location)")
-                    }
+                Label(timeRangeText, systemImage: "clock")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if !lecture.location.isEmpty {
+                    Label(lecture.location, systemImage: "location")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(lecture.topic). \(lecture.date.formatted(date: .abbreviated, time: .omitted)).")
+            .accessibilityLabel(
+                "\(lecture.topic). \(lecture.date.formatted(date: .abbreviated, time: .omitted)), \(timeRangeText)."
+                    + (lecture.location.isEmpty ? "" : " \(lecture.location).")
+            )
 
             Spacer()
 
-            if let onViewActiveRecall {
-                Button(action: onViewActiveRecall) {
-                    Label("Active Recall", systemImage: "brain.head.profile")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View active recall questions for \(lecture.topic).")
-            }
-
-            if let onViewNotes {
-                Button(action: onViewNotes) {
-                    Label("Notes", systemImage: "note.text")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-                .accessibilityLabel("View notes for \(lecture.topic).")
-            }
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
+        .padding(.vertical, 6)
     }
 }

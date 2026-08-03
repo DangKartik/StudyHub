@@ -1,10 +1,23 @@
 import SwiftUI
 
 struct AssignmentListView: View {
+    let bookmarkRepository: any BookmarkRepositoryProtocol
+    let pdfProgressRepository: any PDFProgressRepositoryProtocol
+    let pdfService: any PDFServiceProtocol
+
     @State private var viewModel: AssignmentsViewModel
     @State private var activeSheet: AssignmentSheet?
 
-    init(course: Course, assignmentRepository: any AssignmentRepositoryProtocol) {
+    init(
+        course: Course,
+        assignmentRepository: any AssignmentRepositoryProtocol,
+        bookmarkRepository: any BookmarkRepositoryProtocol,
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
+        pdfService: any PDFServiceProtocol
+    ) {
+        self.bookmarkRepository = bookmarkRepository
+        self.pdfProgressRepository = pdfProgressRepository
+        self.pdfService = pdfService
         _viewModel = State(wrappedValue: AssignmentsViewModel(
             course: course,
             assignmentRepository: assignmentRepository
@@ -17,8 +30,11 @@ struct AssignmentListView: View {
                 StudyHubEmptyState(
                     icon: "checklist",
                     title: "No Assignments Yet",
-                    message: "Add assignments to track your coursework."
-                )
+                    message: "Add assignments to track your coursework.",
+                    actionTitle: "Add Assignment"
+                ) {
+                    activeSheet = .create
+                }
             } else {
                 list
             }
@@ -36,9 +52,21 @@ struct AssignmentListView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .create:
-                AssignmentFormView(viewModel: viewModel, assignment: nil)
+                AssignmentFormView(
+                    viewModel: viewModel,
+                    assignment: nil,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
+                    pdfService: pdfService
+                )
             case .edit(let assignment):
-                AssignmentFormView(viewModel: viewModel, assignment: assignment)
+                AssignmentFormView(
+                    viewModel: viewModel,
+                    assignment: assignment,
+                    bookmarkRepository: bookmarkRepository,
+                    pdfProgressRepository: pdfProgressRepository,
+                    pdfService: pdfService
+                )
             }
         }
         .onAppear {
@@ -56,7 +84,7 @@ struct AssignmentListView: View {
             }
 
             if !viewModel.activeAssignments.isEmpty {
-                Section("Active Assignments") {
+                Section {
                     ForEach(viewModel.activeAssignments, id: \.id) { assignment in
                         AssignmentRowView(assignment: assignment)
                             .contentShape(Rectangle())
@@ -76,12 +104,24 @@ struct AssignmentListView: View {
                                 }
                                 .tint(.green)
                             }
+                            .contextMenu {
+                                Button("Complete", systemImage: "checkmark") {
+                                    withAnimation {
+                                        viewModel.completeAssignment(assignment)
+                                    }
+                                }
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    viewModel.deleteAssignment(assignment)
+                                }
+                            }
                     }
+                } header: {
+                    ListSectionHeaderLabel(title: "Active Assignments", icon: "checklist", tint: .blue)
                 }
             }
 
             if !viewModel.completedAssignments.isEmpty {
-                Section("Completed Assignments") {
+                Section {
                     ForEach(viewModel.completedAssignments, id: \.id) { assignment in
                         AssignmentRowView(assignment: assignment)
                             .contentShape(Rectangle())
@@ -94,7 +134,14 @@ struct AssignmentListView: View {
                                     viewModel.deleteAssignment(assignment)
                                 }
                             }
+                            .contextMenu {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    viewModel.deleteAssignment(assignment)
+                                }
+                            }
                     }
+                } header: {
+                    ListSectionHeaderLabel(title: "Completed Assignments", icon: "checkmark.circle.fill", tint: .green)
                 }
             }
         }
@@ -117,27 +164,70 @@ private enum AssignmentSheet: Identifiable {
 private struct AssignmentRowView: View {
     let assignment: Assignment
 
+    private var isCompleted: Bool {
+        assignment.status == .completed
+    }
+
+    private var isOverdue: Bool {
+        !isCompleted && assignment.dueDate < .now
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
+        HStack(spacing: 12) {
+            if isCompleted {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .accessibilityHidden(true)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text(assignment.title)
                     .font(.headline)
-                Spacer()
-                Text(assignment.priority.label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .strikethrough(isCompleted)
+                    .foregroundStyle(isCompleted ? .secondary : .primary)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.caption2)
+                    Text(assignment.dueDate.formatted(date: .abbreviated, time: .shortened))
+                }
+                .font(.subheadline)
+                .foregroundStyle(isOverdue ? .red : .secondary)
             }
-            HStack(spacing: 6) {
-                Text(assignment.dueDate.formatted(date: .abbreviated, time: .omitted))
-                Text("· \(assignment.status.label)")
+
+            Spacer()
+
+            if !isCompleted {
+                VStack(alignment: .trailing, spacing: 4) {
+                    badge(isOverdue ? "Overdue" : assignment.priority.label, tint: isOverdue ? .red : assignment.priority.color)
+                    if assignment.status != .notStarted {
+                        Text(assignment.status.label)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
+        .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(assignment.title). Due \(assignment.dueDate.formatted(date: .abbreviated, time: .omitted)). " +
-            "\(assignment.priority.label) priority. \(assignment.status.label)."
+            "\(assignment.title). Due \(assignment.dueDate.formatted(date: .abbreviated, time: .omitted)). "
+                + (isOverdue ? "Overdue. " : "\(assignment.priority.label) priority. ")
+                + "\(assignment.status.label)."
         )
+    }
+
+    private func badge(_ text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, StudyHubMetrics.chipHorizontalPadding + 2)
+            .padding(.vertical, StudyHubMetrics.chipVerticalPadding + 1)
+            .background(tint.opacity(0.14), in: Capsule())
     }
 }

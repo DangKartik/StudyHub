@@ -22,7 +22,18 @@ final class ReadingViewModel {
 
     func loadReadings() {
         do {
-            readings = try readingRepository.fetch(forCourse: course)
+            // Due Today outranks Due Soon outranks Not Due everywhere a
+            // Reading is listed — within the same tier, soonest due date
+            // first, then alphabetical for readings with no due date at all.
+            readings = try readingRepository.fetch(forCourse: course).sorted { lhs, rhs in
+                if lhs.dueStatus != rhs.dueStatus {
+                    return lhs.dueStatus < rhs.dueStatus
+                }
+                if let lhsDate = lhs.dueDate, let rhsDate = rhs.dueDate, lhsDate != rhsDate {
+                    return lhsDate < rhsDate
+                }
+                return lhs.title < rhs.title
+            }
             loadError = nil
         } catch let error as StudyHubError {
             loadError = error
@@ -58,12 +69,13 @@ final class ReadingViewModel {
         do {
             try readingRepository.create(reading)
             for attachment in attachments {
-                if attachment.type == AttachmentKind.pdf.rawValue {
+                if AttachmentKind(rawValue: attachment.type)?.isFileBased == true {
                     attachment.url = try AttachmentFileImporter.finalize(temporaryPath: attachment.url)
                 }
                 try readingRepository.createAttachment(attachment, for: reading)
             }
             loadReadings()
+            NotificationCenter.default.post(name: .readingsDidChange, object: nil)
         } catch let error as StudyHubError {
             loadError = error
         } catch {
@@ -86,6 +98,7 @@ final class ReadingViewModel {
         do {
             try readingRepository.save()
             loadReadings()
+            NotificationCenter.default.post(name: .readingsDidChange, object: nil)
         } catch let error as StudyHubError {
             loadError = error
         } catch {
@@ -97,6 +110,7 @@ final class ReadingViewModel {
         do {
             try readingRepository.delete(reading)
             loadReadings()
+            NotificationCenter.default.post(name: .readingsDidChange, object: nil)
         } catch let error as StudyHubError {
             loadError = error
         } catch {

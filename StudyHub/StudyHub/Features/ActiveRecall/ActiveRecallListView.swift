@@ -75,6 +75,24 @@ struct ActiveRecallListView: View {
         viewModel.dueQuestions(from: displayedQuestions)
     }
 
+    /// Reviewing early is never harmful, just not schedule-optimal — so
+    /// the bulk button only disables entirely when there's truly nothing
+    /// to review, falling back to every question instead of staying stuck
+    /// on "0 due" when the student wants to study ahead of schedule anyway.
+    private var reviewButtonQuestions: [ActiveRecallQuestion] {
+        dueQuestions.isEmpty ? displayedQuestions : dueQuestions
+    }
+
+    private var reviewButtonLabel: String {
+        if !dueQuestions.isEmpty {
+            return "Review \(dueQuestions.count) Due Question\(dueQuestions.count == 1 ? "" : "s")"
+        } else if !displayedQuestions.isEmpty {
+            return "Study Ahead (\(displayedQuestions.count) Question\(displayedQuestions.count == 1 ? "" : "s"))"
+        } else {
+            return "No Questions to Review"
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -84,8 +102,11 @@ struct ActiveRecallListView: View {
                     StudyHubEmptyState(
                         icon: "brain.head.profile",
                         title: "No Recall Questions Yet",
-                        message: "Add questions to test your understanding."
-                    )
+                        message: "Add questions to test your understanding.",
+                        actionTitle: viewModel.supportsCreation ? "Add Question" : nil
+                    ) {
+                        activeSheet = .create
+                    }
                 } else if displayedQuestions.isEmpty {
                     StudyHubEmptyState(
                         icon: "line.3.horizontal.decrease.circle",
@@ -185,11 +206,18 @@ struct ActiveRecallListView: View {
 
             Section {
                 Button {
-                    reviewSession = ActiveRecallReviewSession(questions: dueQuestions)
+                    reviewSession = ActiveRecallReviewSession(questions: reviewButtonQuestions)
                 } label: {
-                    Label("Review \(dueQuestions.count) Due Question\(dueQuestions.count == 1 ? "" : "s")", systemImage: "shuffle")
+                    Label(reviewButtonLabel, systemImage: "shuffle")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
                 }
-                .disabled(dueQuestions.isEmpty)
+                .buttonStyle(.borderedProminent)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .padding()
+                .disabled(reviewButtonQuestions.isEmpty)
             }
 
             // Review Queue (Phase 4.4): grouped by the shared SM-2 due-date
@@ -213,6 +241,14 @@ struct ActiveRecallListView: View {
                                     activeSheet = .edit(recallQuestion)
                                 }
                                 .tint(.blue)
+                            }
+                            .contextMenu {
+                                Button("Edit", systemImage: "pencil") {
+                                    activeSheet = .edit(recallQuestion)
+                                }
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    viewModel.deleteQuestion(recallQuestion)
+                                }
                             }
                     }
                 }
@@ -333,8 +369,8 @@ private struct ActiveRecallRowTagChip: View {
     var body: some View {
         Text(text)
             .font(.caption2)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, StudyHubMetrics.chipHorizontalPadding)
+            .padding(.vertical, StudyHubMetrics.chipVerticalPadding)
             .foregroundStyle(Color.accentColor)
             .background(Color.accentColor.opacity(0.15), in: Capsule())
     }

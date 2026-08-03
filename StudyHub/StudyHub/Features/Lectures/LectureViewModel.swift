@@ -32,7 +32,8 @@ final class LectureViewModel {
         startTime: Date,
         endTime: Date,
         location: String,
-        summary: String
+        summary: String,
+        attachments: [Attachment] = []
     ) {
         let lecture = Lecture(
             title: title,
@@ -47,6 +48,12 @@ final class LectureViewModel {
 
         do {
             try lectureRepository.create(lecture)
+            for attachment in attachments {
+                if AttachmentKind(rawValue: attachment.type)?.isFileBased == true {
+                    attachment.url = try AttachmentFileImporter.finalize(temporaryPath: attachment.url)
+                }
+                try lectureRepository.createAttachment(attachment, for: lecture)
+            }
             loadLectures()
         } catch let error as StudyHubError {
             loadError = error
@@ -91,6 +98,43 @@ final class LectureViewModel {
             loadError = error
         } catch {
             loadError = PersistenceError.deleteFailed(underlying: error)
+        }
+    }
+
+    func addAttachment(to lecture: Lecture, filename: String, type: String, url: String) {
+        let attachment = Attachment(filename: filename, type: type, url: url)
+
+        do {
+            try lectureRepository.createAttachment(attachment, for: lecture)
+            loadLectures()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
+        }
+    }
+
+    func deleteAttachment(_ attachment: Attachment) {
+        do {
+            try lectureRepository.deleteAttachment(attachment)
+            loadLectures()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.deleteFailed(underlying: error)
+        }
+    }
+
+    /// Persists a PDF attachment's PencilKit markup — no list reload
+    /// needed, matching `NotesViewModel.saveMarkup`.
+    func saveMarkup(_ data: Data, for attachment: Attachment) {
+        attachment.markupData = data
+        do {
+            try lectureRepository.save()
+        } catch let error as StudyHubError {
+            loadError = error
+        } catch {
+            loadError = PersistenceError.saveFailed(underlying: error)
         }
     }
 }

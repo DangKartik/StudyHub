@@ -27,7 +27,7 @@ final class ResourceViewModel {
 
     func createResource(
         title: String,
-        type: ResourceType,
+        type: AttachmentKind,
         url: String,
         notes: String
     ) {
@@ -52,7 +52,7 @@ final class ResourceViewModel {
     func updateResource(
         _ resource: Resource,
         title: String,
-        type: ResourceType,
+        type: AttachmentKind,
         url: String,
         notes: String
     ) {
@@ -93,19 +93,6 @@ final class ResourceViewModel {
             loadError = error
         } catch {
             loadError = PersistenceError.saveFailed(underlying: error)
-        }
-    }
-}
-
-extension ResourceType {
-    var label: String {
-        switch self {
-        case .pdf: return "PDF"
-        case .website: return "Website"
-        case .book: return "Book"
-        case .video: return "Video"
-        case .repository: return "Repository"
-        case .document: return "Document"
         }
     }
 }

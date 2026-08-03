@@ -15,18 +15,17 @@ struct NoteDetailView: View {
 
     @State private var showingBodyEditor = false
     @State private var attachmentForViewing: Attachment?
+    @State private var imageForViewing: Attachment?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
-    /// Every openable attachment (PDF/Link/GoodNotes) — a note can carry
-    /// more than one, so this shows a button per attachment rather than
-    /// only the first. Image/Document/Other attachments have no defined
-    /// "open" action, matching every other opening-behavior entry point in
-    /// the app.
+    /// Every openable attachment (PDF/Image/Link) — a note can carry more
+    /// than one, so this shows a button per attachment rather than only
+    /// the first.
     private var openableAttachments: [Attachment] {
         note.attachments.filter {
             let kind = AttachmentKind(rawValue: $0.type)
-            return kind == .pdf || kind == .link || kind == .goodnotes
+            return kind == .pdf || kind == .image || kind == .link
         }
     }
 
@@ -85,7 +84,7 @@ struct NoteDetailView: View {
             .fullScreenCover(isPresented: $showingBodyEditor) {
                 NoteBodyEditorView(note: note, viewModel: viewModel)
             }
-            .navigationDestination(isPresented: Binding(
+            .fullScreenCover(isPresented: Binding(
                 get: { attachmentForViewing != nil },
                 set: { isPresented in
                     if !isPresented { attachmentForViewing = nil }
@@ -93,19 +92,33 @@ struct NoteDetailView: View {
             )) {
                 if let attachmentForViewing {
                     let noteBody = note.body.trimmingCharacters(in: .whitespacesAndNewlines)
-                    PDFViewerView(
-                        attachment: attachmentForViewing,
-                        summary: noteBody.isEmpty ? nil : noteBody,
-                        onSummaryEdit: { newBody in
-                            viewModel.updateNote(note, title: note.title, body: newBody)
-                        },
-                        onMarkupSave: { data in
-                            viewModel.saveMarkup(data, for: attachmentForViewing)
-                        },
-                        bookmarkRepository: bookmarkRepository,
-                        pdfProgressRepository: pdfProgressRepository,
-                        pdfService: pdfService
-                    )
+                    NavigationStack {
+                        PDFViewerView(
+                            attachment: attachmentForViewing,
+                            summary: noteBody.isEmpty ? nil : noteBody,
+                            onSummaryEdit: { newBody in
+                                viewModel.updateNote(note, title: note.title, body: newBody)
+                            },
+                            onMarkupSave: { data in
+                                viewModel.saveMarkup(data, for: attachmentForViewing)
+                            },
+                            bookmarkRepository: bookmarkRepository,
+                            pdfProgressRepository: pdfProgressRepository,
+                            pdfService: pdfService
+                        )
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: Binding(
+                get: { imageForViewing != nil },
+                set: { isPresented in
+                    if !isPresented { imageForViewing = nil }
+                }
+            )) {
+                if let imageForViewing {
+                    NavigationStack {
+                        ImageViewerView(attachment: imageForViewing)
+                    }
                 }
             }
         }
@@ -142,11 +155,13 @@ struct NoteDetailView: View {
         switch AttachmentKind(rawValue: attachment.type) {
         case .pdf:
             attachmentForViewing = attachment
-        case .link, .goodnotes:
-            if let url = URL(string: attachment.url) {
+        case .image:
+            imageForViewing = attachment
+        case .link:
+            if let url = URL.openable(from: attachment.url) {
                 openURL(url)
             }
-        default:
+        case .none:
             break
         }
     }
@@ -158,18 +173,15 @@ struct NoteDetailView: View {
         let kindLabel: String
         switch AttachmentKind(rawValue: attachment.type) {
         case .pdf: kindLabel = "View PDF"
-        case .goodnotes: kindLabel = "Open in GoodNotes"
-        default: kindLabel = "Open Link"
+        case .image: kindLabel = "View Image"
+        case .link, .none: kindLabel = "Open Link"
         }
         let filename = attachment.filename.trimmingCharacters(in: .whitespacesAndNewlines)
         return filename.isEmpty ? kindLabel : "\(kindLabel): \(filename)"
     }
 
     private func attachmentButtonIcon(for attachment: Attachment) -> String {
-        switch AttachmentKind(rawValue: attachment.type) {
-        case .pdf: return "doc.richtext"
-        default: return "link"
-        }
+        AttachmentKind(rawValue: attachment.type)?.icon ?? "link"
     }
 }
 

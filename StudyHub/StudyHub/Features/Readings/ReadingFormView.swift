@@ -1,14 +1,11 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
-/// Redesigned per the "final PDF/document reading integration" phase:
-/// total pages, current page, and estimated minutes are no longer entered
-/// here — they're derived automatically from the PDF itself (see
-/// `ReadingViewModel.progress(for:)`), never from user input. The
-/// attachment model is simplified from an arbitrary multi-attachment list
-/// (any kind, any count) down to one primary reading source: either an
-/// uploaded PDF or a plain URL, matching how a Reading is actually opened
-/// elsewhere in the app (`ReadingListView.primaryAttachment(for:)`).
+/// Attachments now use the same shared multi-attachment system every other
+/// feature does (Notes/Lectures/Assignments/Assessments) — PDF, Link, or
+/// Image, any number of them, via `AttachmentFormView`. Previously
+/// Readings had its own bespoke "one primary source: PDF or URL" flow with
+/// no Image support; that simplification was an intentional earlier design
+/// choice, since reversed by explicit request.
 struct ReadingFormView: View {
     let viewModel: ReadingViewModel
     let reading: Reading?
@@ -23,15 +20,12 @@ struct ReadingFormView: View {
     @State private var hasDueDate: Bool = false
     @State private var dueDate: Date = .now
     @State private var notes: String = ""
-    @State private var urlText: String = ""
 
-    @State private var existingPDFAttachment: Attachment?
-    @State private var existingLinkAttachment: Attachment?
-    @State private var pdfFilename: String?
-    @State private var stagedTemporaryPath: String?
-    @State private var isImportingPDF = false
-    @State private var attachmentError: StudyHubError?
+    @State private var pendingAttachments: [Attachment] = []
+    @State private var isAddingAttachment = false
     @State private var attachmentForViewing: Attachment?
+    @State private var imageForViewing: Attachment?
+    @State private var attachmentError: StudyHubError?
     @State private var didSaveReading = false
 
     private var isEditing: Bool {
@@ -40,6 +34,10 @@ struct ReadingFormView: View {
 
     private var canSave: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var currentAttachments: [Attachment] {
+        reading?.attachments ?? pendingAttachments
     }
 
     var body: some View {
@@ -52,7 +50,24 @@ struct ReadingFormView: View {
 
                 progressSection
 
-                attachmentSection
+                Section {
+                    if currentAttachments.isEmpty {
+                        Text("No attachments yet")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(currentAttachments, id: \.id) { attachment in
+                            attachmentRow(attachment)
+                        }
+                    }
+
+                    Button {
+                        isAddingAttachment = true
+                    } label: {
+                        Label("Add Attachment", systemImage: "paperclip")
+                    }
+                } header: {
+                    Label("Attachments", systemImage: "paperclip")
+                }
 
                 Section("Due Date") {
                     Toggle("Set Due Date", isOn: $hasDueDate)
@@ -80,19 +95,45 @@ struct ReadingFormView: View {
                     .disabled(!canSave)
                 }
             }
-            .navigationDestination(isPresented: Binding(
+            .sheet(isPresented: $isAddingAttachment) {
+                AttachmentFormView { filename, type, tempOrURLValue in
+                    if let reading {
+                        commitAttachment(to: reading, filename: filename, type: type, value: tempOrURLValue)
+                    } else {
+                        pendingAttachments.append(Attachment(filename: filename, type: type, url: tempOrURLValue))
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: Binding(
                 get: { attachmentForViewing != nil },
                 set: { isPresented in
                     if !isPresented { attachmentForViewing = nil }
                 }
             )) {
                 if let attachmentForViewing {
-                    PDFViewerView(
-                        attachment: attachmentForViewing,
-                        bookmarkRepository: bookmarkRepository,
-                        pdfProgressRepository: pdfProgressRepository,
-                        pdfService: pdfService
-                    )
+                    NavigationStack {
+                        PDFViewerView(
+                            attachment: attachmentForViewing,
+                            onMarkupSave: { data in
+                                viewModel.saveMarkup(data, for: attachmentForViewing)
+                            },
+                            bookmarkRepository: bookmarkRepository,
+                            pdfProgressRepository: pdfProgressRepository,
+                            pdfService: pdfService
+                        )
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: Binding(
+                get: { imageForViewing != nil },
+                set: { isPresented in
+                    if !isPresented { imageForViewing = nil }
+                }
+            )) {
+                if let imageForViewing {
+                    NavigationStack {
+                        ImageViewerView(attachment: imageForViewing)
+                    }
                 }
             }
             .alert(
@@ -108,23 +149,9 @@ struct ReadingFormView: View {
             } message: {
                 Text(attachmentError?.message ?? "This attachment could not be saved.")
             }
-            .fileImporter(isPresented: $isImportingPDF, allowedContentTypes: [.pdf]) { result in
-                switch result {
-                case .success(let pickedURL):
-                    do {
-                        let imported = try AttachmentFileImporter.importToTemporaryStorage(from: pickedURL)
-                        if let stagedTemporaryPath {
-                            AttachmentFileImporter.deleteTemporaryFile(at: stagedTemporaryPath)
-                        }
-                        stagedTemporaryPath = imported.path
-                        pdfFilename = imported.filename
-                    } catch let error as StudyHubError {
-                        attachmentError = error
-                    } catch {
-                        attachmentError = AttachmentImportError.copyFailed
-                    }
-                case .failure:
-                    attachmentError = AttachmentImportError.copyFailed
+            .onDisappear {
+                if !didSaveReading {
+                    discardPendingAttachments()
                 }
             }
             .onAppear {
@@ -136,15 +163,6 @@ struct ReadingFormView: View {
                         hasDueDate = true
                         dueDate = existingDueDate
                     }
-                    existingPDFAttachment = reading.attachments.first { AttachmentKind(rawValue: $0.type) == .pdf }
-                    pdfFilename = existingPDFAttachment?.filename
-                    existingLinkAttachment = reading.attachments.first { AttachmentKind(rawValue: $0.type) == .link }
-                    urlText = existingLinkAttachment?.url ?? ""
-                }
-            }
-            .onDisappear {
-                if !didSaveReading, let stagedTemporaryPath {
-                    AttachmentFileImporter.deleteTemporaryFile(at: stagedTemporaryPath)
                 }
             }
         }
@@ -170,61 +188,65 @@ struct ReadingFormView: View {
     }
 
     @ViewBuilder
-    private var attachmentSection: some View {
-        Section("Attachment") {
-            Button {
-                isImportingPDF = true
-            } label: {
-                Label(pdfFilename == nil ? "Upload PDF" : "Replace PDF", systemImage: "square.and.arrow.down")
+    private func attachmentRow(_ attachment: Attachment) -> some View {
+        HStack(spacing: 8) {
+            AttachmentIconBadge(kind: AttachmentKind(rawValue: attachment.type), size: 24)
+            Text(attachment.filename.isEmpty ? "Attachment" : attachment.filename)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            switch AttachmentKind(rawValue: attachment.type) {
+            case .pdf:
+                attachmentForViewing = attachment
+            case .image:
+                imageForViewing = attachment
+            case .link, .none:
+                break
             }
-
-            if let pdfFilename {
-                HStack {
-                    Label(pdfFilename, systemImage: "doc.richtext")
-                        .lineLimit(1)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if let existingPDFAttachment {
-                                attachmentForViewing = existingPDFAttachment
-                            }
-                        }
-                    Spacer()
-                    Button {
-                        removePDF()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
+        }
+        .swipeActions(edge: .trailing) {
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                removeAttachment(attachment)
             }
-
-            TextField("URL", text: $urlText)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
         }
     }
 
-    /// Removing a PDF that's only staged (not yet saved) is just local
-    /// state; removing one already attached to a persisted Reading deletes
-    /// it immediately, matching every other attachment-delete affordance in
-    /// this app (swipe-to-delete elsewhere takes effect immediately too).
-    private func removePDF() {
-        if let stagedTemporaryPath {
-            AttachmentFileImporter.deleteTemporaryFile(at: stagedTemporaryPath)
+    private func commitAttachment(to reading: Reading, filename: String, type: String, value: String) {
+        guard AttachmentKind(rawValue: type)?.isFileBased == true else {
+            viewModel.addAttachment(to: reading, filename: filename, type: type, url: value)
+            return
         }
-        stagedTemporaryPath = nil
-        pdfFilename = nil
-        if let existingPDFAttachment {
-            viewModel.deleteAttachment(existingPDFAttachment)
-            self.existingPDFAttachment = nil
+
+        do {
+            let finalPath = try AttachmentFileImporter.finalize(temporaryPath: value)
+            viewModel.addAttachment(to: reading, filename: filename, type: type, url: finalPath)
+        } catch let error as StudyHubError {
+            attachmentError = error
+        } catch {
+            attachmentError = AttachmentImportError.copyFailed
+        }
+    }
+
+    private func removeAttachment(_ attachment: Attachment) {
+        if reading != nil {
+            viewModel.deleteAttachment(attachment)
+        } else {
+            pendingAttachments.removeAll { $0.id == attachment.id }
+            if AttachmentKind(rawValue: attachment.type)?.isFileBased == true {
+                AttachmentFileImporter.deleteTemporaryFile(at: attachment.url)
+            }
+        }
+    }
+
+    private func discardPendingAttachments() {
+        for attachment in pendingAttachments where AttachmentKind(rawValue: attachment.type)?.isFileBased == true {
+            AttachmentFileImporter.deleteTemporaryFile(at: attachment.url)
         }
     }
 
     private func saveReading() {
-        let trimmedURL = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
-
         if let reading {
             viewModel.updateReading(
                 reading,
@@ -233,54 +255,16 @@ struct ReadingFormView: View {
                 dueDate: hasDueDate ? dueDate : nil,
                 notes: notes
             )
-            savePDFAttachment(to: reading)
-            saveLinkAttachment(to: reading, urlText: trimmedURL)
         } else {
             didSaveReading = true
-            var attachments: [Attachment] = []
-            if let stagedTemporaryPath, let pdfFilename {
-                attachments.append(Attachment(filename: pdfFilename, type: AttachmentKind.pdf.rawValue, url: stagedTemporaryPath))
-            }
-            if !trimmedURL.isEmpty {
-                attachments.append(Attachment(filename: "Link", type: AttachmentKind.link.rawValue, url: trimmedURL))
-            }
             viewModel.createReading(
                 title: title,
                 author: author,
                 dueDate: hasDueDate ? dueDate : nil,
                 notes: notes,
-                attachments: attachments
+                attachments: pendingAttachments
             )
         }
         dismiss()
-    }
-
-    /// Only relevant in edit mode — create mode's PDF (if any) is handled
-    /// as a staged attachment passed straight into `createReading`.
-    private func savePDFAttachment(to reading: Reading) {
-        guard let stagedTemporaryPath, let pdfFilename else { return }
-
-        do {
-            let finalPath = try AttachmentFileImporter.finalize(temporaryPath: stagedTemporaryPath)
-            if let existingPDFAttachment {
-                viewModel.deleteAttachment(existingPDFAttachment)
-            }
-            viewModel.addAttachment(to: reading, filename: pdfFilename, type: AttachmentKind.pdf.rawValue, url: finalPath)
-        } catch let error as StudyHubError {
-            attachmentError = error
-        } catch {
-            attachmentError = AttachmentImportError.copyFailed
-        }
-    }
-
-    private func saveLinkAttachment(to reading: Reading, urlText: String) {
-        let previousURL = existingLinkAttachment?.url ?? ""
-        guard urlText != previousURL else { return }
-
-        if let existingLinkAttachment {
-            viewModel.deleteAttachment(existingLinkAttachment)
-        }
-        guard !urlText.isEmpty else { return }
-        viewModel.addAttachment(to: reading, filename: "Link", type: AttachmentKind.link.rawValue, url: urlText)
     }
 }

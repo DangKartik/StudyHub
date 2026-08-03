@@ -14,17 +14,12 @@ protocol CourseRepositoryProtocol {
     func search(query: String) throws -> [Course]
     func archive(_ course: Course) throws
 
-    func createQuiz(_ quiz: Quiz, for course: Course) throws
-    func deleteQuiz(_ quiz: Quiz) throws
-    func fetchQuizzes(for course: Course) throws -> [Quiz]
+    func createAssessment(_ assessment: Assessment, for course: Course) throws
+    func deleteAssessment(_ assessment: Assessment) throws
+    func fetchAssessments(for course: Course) throws -> [Assessment]
 
-    func createExam(_ exam: Exam, for course: Course) throws
-    func deleteExam(_ exam: Exam) throws
-    func fetchExams(for course: Course) throws -> [Exam]
-
-    func createGradeCategory(_ category: GradeCategory, for course: Course) throws
-    func deleteGradeCategory(_ category: GradeCategory) throws
-    func fetchGradeCategories(for course: Course) throws -> [GradeCategory]
+    func createAttachment(_ attachment: Attachment, for assessment: Assessment) throws
+    func deleteAttachment(_ attachment: Attachment) throws
 }
 
 @MainActor
@@ -86,48 +81,29 @@ final class CourseRepository: CourseRepositoryProtocol {
         try persistenceSave { try modelContext.save() }
     }
 
-    func createQuiz(_ quiz: Quiz, for course: Course) throws {
-        quiz.course = course
-        modelContext.insert(quiz)
+    func createAssessment(_ assessment: Assessment, for course: Course) throws {
+        assessment.course = course
+        modelContext.insert(assessment)
         try persistenceSave { try modelContext.save() }
     }
 
-    func deleteQuiz(_ quiz: Quiz) throws {
-        modelContext.delete(quiz)
+    func deleteAssessment(_ assessment: Assessment) throws {
+        modelContext.delete(assessment)
         try persistenceDelete { try modelContext.save() }
     }
 
-    func fetchQuizzes(for course: Course) throws -> [Quiz] {
-        course.quizzes.sorted { $0.date < $1.date }
+    func fetchAssessments(for course: Course) throws -> [Assessment] {
+        course.assessments.sorted { $0.date < $1.date }
     }
 
-    func createExam(_ exam: Exam, for course: Course) throws {
-        exam.course = course
-        modelContext.insert(exam)
+    func createAttachment(_ attachment: Attachment, for assessment: Assessment) throws {
+        attachment.assessment = assessment
+        modelContext.insert(attachment)
         try persistenceSave { try modelContext.save() }
     }
 
-    func deleteExam(_ exam: Exam) throws {
-        modelContext.delete(exam)
+    func deleteAttachment(_ attachment: Attachment) throws {
+        modelContext.delete(attachment)
         try persistenceDelete { try modelContext.save() }
-    }
-
-    func fetchExams(for course: Course) throws -> [Exam] {
-        course.exams.sorted { $0.date < $1.date }
-    }
-
-    func createGradeCategory(_ category: GradeCategory, for course: Course) throws {
-        category.course = course
-        modelContext.insert(category)
-        try persistenceSave { try modelContext.save() }
-    }
-
-    func deleteGradeCategory(_ category: GradeCategory) throws {
-        modelContext.delete(category)
-        try persistenceDelete { try modelContext.save() }
-    }
-
-    func fetchGradeCategories(for course: Course) throws -> [GradeCategory] {
-        course.gradeCategories.sorted { $0.title < $1.title }
     }
 }

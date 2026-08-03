@@ -60,24 +60,30 @@ final class NotesViewModel {
         self.noteRepository = noteRepository
     }
 
-    /// True when this screen represents a Course's Notes (as opposed to a
-    /// single Lecture's Notes) — used to decide whether the creation form
-    /// should offer an optional Lecture picker (see DECISION-030).
-    var isCourseScope: Bool {
-        if case .course = scope {
-            return true
+    /// Resolves the Lecture-picker's owning course (and that course's
+    /// lectures) for any scope — previously the picker only ever appeared
+    /// from `.course` scope (DECISION-030's original scope), so the exact
+    /// same note showed the option to link a Lecture when edited from a
+    /// Course's Notes tab but not when edited from a single Lecture's Notes
+    /// tab, Global Search, or the Flashcards note-viewing sheet — all of
+    /// which use `.lecture` or `.global` scope. Since a note's owning course
+    /// is always resolvable (directly, or via its Lecture), the picker can
+    /// show consistently everywhere a course context actually exists.
+    /// Returns `nil` for a Reading-owned note (no Course/Lecture context to
+    /// offer) or a brand-new note in `.global` scope (which never happens —
+    /// `.global` doesn't support creation, see `supportsCreation`).
+    func lectureContext(for note: Note?) -> (course: Course, lectures: [Lecture])? {
+        let course: Course?
+        switch scope {
+        case .course(let scopeCourse):
+            course = scopeCourse
+        case .lecture(let lecture):
+            course = lecture.course
+        case .global:
+            course = note?.course ?? note?.lecture?.course
         }
-        return false
-    }
-
-    /// The course's own lectures, used to populate the optional Lecture picker
-    /// when creating from Course scope. Read directly from the already-loaded
-    /// relationship, mirroring `FlashcardsViewModel.availableLectures`.
-    var availableLectures: [Lecture] {
-        if case .course(let course) = scope {
-            return course.lectures.sorted { $0.date < $1.date }
-        }
-        return []
+        guard let course else { return nil }
+        return (course, course.lectures.sorted { $0.date < $1.date })
     }
 
     /// True for `.course`/`.lecture` scopes, which have an unambiguous owner
@@ -225,15 +231,15 @@ final class NotesViewModel {
         }
     }
 
-    /// Re-links an existing note between the scope's Course directly and one
-    /// of its Lectures — only meaningful (and only ever called) from
-    /// `.course` scope, where a note is guaranteed to already be Course- or
-    /// Lecture-owned, never Reading-owned (see
-    /// `NoteRepository.fetch(forCourseIncludingLectures:)`). `lecture: nil`
-    /// means "Course Only"; exactly one of `note.course`/`note.lecture` is
-    /// ever set afterward, preserving DECISION-031's single-owner rule.
+    /// Re-links an existing note between a Course directly and one of its
+    /// Lectures — the owning course is resolved the same way as
+    /// `lectureContext(for:)` so this works from any scope, not just
+    /// `.course`. `lecture: nil` means "Course Only"; exactly one of
+    /// `note.course`/`note.lecture` is ever set afterward, preserving
+    /// DECISION-031's single-owner rule. No-ops for a Reading-owned note
+    /// (no resolvable course context).
     func updateNoteOwnership(_ note: Note, lecture: Lecture?) {
-        guard case .course(let course) = scope else { return }
+        guard let course = lectureContext(for: note)?.course else { return }
 
         if let lecture {
             note.lecture = lecture
