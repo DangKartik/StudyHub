@@ -17,7 +17,9 @@ struct ReadingListView: View {
         readingRepository: any ReadingRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
-        pdfService: any PDFServiceProtocol
+        pdfService: any PDFServiceProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        userPreferences: UserPreferences
     ) {
         self.bookmarkRepository = bookmarkRepository
         self.pdfProgressRepository = pdfProgressRepository
@@ -25,7 +27,9 @@ struct ReadingListView: View {
         _viewModel = State(wrappedValue: ReadingViewModel(
             course: course,
             readingRepository: readingRepository,
-            pdfProgressRepository: pdfProgressRepository
+            pdfProgressRepository: pdfProgressRepository,
+            notificationManager: notificationManager,
+            userPreferences: userPreferences
         ))
     }
 

@@ -6,6 +6,8 @@ final class ReadingViewModel {
     private let course: Course
     private let readingRepository: any ReadingRepositoryProtocol
     private let pdfProgressRepository: any PDFProgressRepositoryProtocol
+    private let notificationManager: any NotificationSchedulingProtocol
+    private let userPreferences: UserPreferences
 
     private(set) var readings: [Reading] = []
     private(set) var loadError: StudyHubError?
@@ -13,11 +15,15 @@ final class ReadingViewModel {
     init(
         course: Course,
         readingRepository: any ReadingRepositoryProtocol,
-        pdfProgressRepository: any PDFProgressRepositoryProtocol
+        pdfProgressRepository: any PDFProgressRepositoryProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        userPreferences: UserPreferences
     ) {
         self.course = course
         self.readingRepository = readingRepository
         self.pdfProgressRepository = pdfProgressRepository
+        self.notificationManager = notificationManager
+        self.userPreferences = userPreferences
     }
 
     func loadReadings() {
@@ -74,6 +80,7 @@ final class ReadingViewModel {
                 }
                 try readingRepository.createAttachment(attachment, for: reading)
             }
+            scheduleDueSoonNotification(for: reading)
             loadReadings()
             NotificationCenter.default.post(name: .readingsDidChange, object: nil)
         } catch let error as StudyHubError {
@@ -97,6 +104,7 @@ final class ReadingViewModel {
 
         do {
             try readingRepository.save()
+            scheduleDueSoonNotification(for: reading)
             loadReadings()
             NotificationCenter.default.post(name: .readingsDidChange, object: nil)
         } catch let error as StudyHubError {
@@ -107,6 +115,7 @@ final class ReadingViewModel {
     }
 
     func deleteReading(_ reading: Reading) {
+        notificationManager.cancelNotification(id: dueSoonNotificationID(for: reading))
         do {
             try readingRepository.delete(reading)
             loadReadings()
@@ -116,6 +125,30 @@ final class ReadingViewModel {
         } catch {
             loadError = PersistenceError.deleteFailed(underlying: error)
         }
+    }
+
+    private func dueSoonNotificationID(for reading: Reading) -> String {
+        "reading-dueSoon-\(reading.id)"
+    }
+
+    /// Fires relative to the *start of the due day*, not the raw `dueDate`
+    /// timestamp — Reading's due date has no time picker, so the stored
+    /// `Date` carries an arbitrary time-of-day left over from whenever the
+    /// form was saved (see `Reading.dueStatus`, which treats it the same
+    /// way for calendar-day comparisons).
+    private func scheduleDueSoonNotification(for reading: Reading) {
+        let id = dueSoonNotificationID(for: reading)
+        notificationManager.cancelNotification(id: id)
+        guard userPreferences.notificationsEnabled, let dueDate = reading.dueDate else { return }
+        let startOfDueDay = Calendar.current.startOfDay(for: dueDate)
+        let fireDate = Calendar.current.date(byAdding: .hour, value: -userPreferences.dueSoonReminderLeadHours, to: startOfDueDay) ?? startOfDueDay
+        let courseLabel = course.name.isEmpty ? course.courseCode : course.name
+        notificationManager.scheduleNotification(
+            id: id,
+            title: "Reading Due Soon",
+            body: courseLabel.isEmpty ? reading.title : "\(reading.title) — \(courseLabel)",
+            date: fireDate
+        )
     }
 
     func addAttachment(to reading: Reading, filename: String, type: String, url: String) {

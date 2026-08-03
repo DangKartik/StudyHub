@@ -16,6 +16,9 @@ struct SemesterListView: View {
     let pdfService: any PDFServiceProtocol
     let studySessionRepository: any StudySessionRepositoryProtocol
     let userPreferences: UserPreferences
+    let calendarRepository: any CalendarRepositoryProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     @State private var viewModel: SemesterViewModel
     @State private var activeSheet: SemesterSheet?
@@ -36,7 +39,10 @@ struct SemesterListView: View {
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol,
         studySessionRepository: any StudySessionRepositoryProtocol,
-        userPreferences: UserPreferences
+        userPreferences: UserPreferences,
+        calendarRepository: any CalendarRepositoryProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        calendarSyncService: any CalendarSyncServiceProtocol
     ) {
         self.appState = appState
         self.courseRepository = courseRepository
@@ -53,6 +59,9 @@ struct SemesterListView: View {
         self.pdfService = pdfService
         self.studySessionRepository = studySessionRepository
         self.userPreferences = userPreferences
+        self.calendarRepository = calendarRepository
+        self.notificationManager = notificationManager
+        self.calendarSyncService = calendarSyncService
         _viewModel = State(wrappedValue: SemesterViewModel(
             appState: appState,
             semesterRepository: semesterRepository
@@ -115,7 +124,10 @@ struct SemesterListView: View {
                     pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService,
                     studySessionRepository: studySessionRepository,
-                    userPreferences: userPreferences
+                    userPreferences: userPreferences,
+                    calendarRepository: calendarRepository,
+                    notificationManager: notificationManager,
+                    calendarSyncService: calendarSyncService
                 )
             }
         }

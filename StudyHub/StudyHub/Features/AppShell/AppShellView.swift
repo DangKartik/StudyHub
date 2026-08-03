@@ -19,6 +19,9 @@ struct AppShellView: View {
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
     let quoteRepository: any QuoteRepositoryProtocol
+    let calendarRepository: any CalendarRepositoryProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     var body: some View {
         NavigationSplitView {
@@ -43,7 +46,10 @@ struct AppShellView: View {
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
                 pdfService: pdfService,
-                quoteRepository: quoteRepository
+                quoteRepository: quoteRepository,
+                calendarRepository: calendarRepository,
+                notificationManager: notificationManager,
+                calendarSyncService: calendarSyncService
             )
         }
     }

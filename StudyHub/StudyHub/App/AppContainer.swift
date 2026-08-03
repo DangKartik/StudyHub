@@ -24,6 +24,8 @@ final class AppContainer {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     private let appLifecycleService: any AppLifecycleServicing
 
@@ -52,6 +54,8 @@ final class AppContainer {
         bookmarkRepository = BookmarkRepository(modelContext: context)
         pdfProgressRepository = PDFProgressRepository(modelContext: context)
         pdfService = PDFService()
+        notificationManager = NotificationManager()
+        calendarSyncService = CalendarSyncService()
 
         appLifecycleService = AppLifecycleService(appState: appState, modelContainer: modelContainer)
 

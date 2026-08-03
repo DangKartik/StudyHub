@@ -19,6 +19,8 @@ struct StudySessionWorkspaceView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let userPreferences: UserPreferences
+    let notificationManager: any NotificationSchedulingProtocol
 
     @State private var timer = PomodoroTimerModel()
     /// Scales the timer readout with the user's Dynamic Type setting
@@ -375,7 +377,9 @@ struct StudySessionWorkspaceView: View {
                     readingRepository: readingRepository,
                     bookmarkRepository: bookmarkRepository,
                     pdfProgressRepository: pdfProgressRepository,
-                    pdfService: pdfService
+                    pdfService: pdfService,
+                    notificationManager: notificationManager,
+                    userPreferences: userPreferences
                 )
             case .notes:
                 NotesListView(

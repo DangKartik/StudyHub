@@ -17,6 +17,9 @@ struct HomeView: View {
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
     let quoteRepository: any QuoteRepositoryProtocol
+    let calendarRepository: any CalendarRepositoryProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     @State private var viewModel: HomeViewModel
     @State private var showSemestersFromEmptyState = false
@@ -48,7 +51,10 @@ struct HomeView: View {
         bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol,
-        quoteRepository: any QuoteRepositoryProtocol
+        quoteRepository: any QuoteRepositoryProtocol,
+        calendarRepository: any CalendarRepositoryProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        calendarSyncService: any CalendarSyncServiceProtocol
     ) {
         self.appState = appState
         self.userPreferences = userPreferences
@@ -66,6 +72,9 @@ struct HomeView: View {
         self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         self.quoteRepository = quoteRepository
+        self.calendarRepository = calendarRepository
+        self.notificationManager = notificationManager
+        self.calendarSyncService = calendarSyncService
         _viewModel = State(wrappedValue: HomeViewModel(
             appState: appState,
             userPreferences: userPreferences,
@@ -75,7 +84,8 @@ struct HomeView: View {
             flashcardRepository: flashcardRepository,
             activeRecallRepository: activeRecallRepository,
             studySessionRepository: studySessionRepository,
-            quoteRepository: quoteRepository
+            quoteRepository: quoteRepository,
+            notificationManager: notificationManager
         ))
     }
 
@@ -110,7 +120,10 @@ struct HomeView: View {
                 pdfProgressRepository: pdfProgressRepository,
                 pdfService: pdfService,
                 studySessionRepository: studySessionRepository,
-                userPreferences: userPreferences
+                userPreferences: userPreferences,
+                calendarRepository: calendarRepository,
+                notificationManager: notificationManager,
+                calendarSyncService: calendarSyncService
             )
         }
         .navigationDestination(isPresented: $showCoursesFromEmptyState) {
@@ -129,7 +142,10 @@ struct HomeView: View {
                 pdfProgressRepository: pdfProgressRepository,
                 pdfService: pdfService,
                 studySessionRepository: studySessionRepository,
-                userPreferences: userPreferences
+                userPreferences: userPreferences,
+                calendarRepository: calendarRepository,
+                notificationManager: notificationManager,
+                calendarSyncService: calendarSyncService
             )
         }
         .sheet(isPresented: Binding(
@@ -142,7 +158,7 @@ struct HomeView: View {
         }) {
             if let assignmentForEdit, let course = assignmentForEdit.course {
                 AssignmentQuickStatusView(
-                    viewModel: AssignmentsViewModel(course: course, assignmentRepository: assignmentRepository),
+                    viewModel: AssignmentsViewModel(course: course, assignmentRepository: assignmentRepository, notificationManager: notificationManager, calendarSyncService: calendarSyncService, calendarRepository: calendarRepository, userPreferences: userPreferences),
                     assignment: assignmentForEdit
                 )
             }
@@ -173,7 +189,9 @@ struct HomeView: View {
                     readingRepository: readingRepository,
                     bookmarkRepository: bookmarkRepository,
                     pdfProgressRepository: pdfProgressRepository,
-                    pdfService: pdfService
+                    pdfService: pdfService,
+                    notificationManager: notificationManager,
+                    userPreferences: userPreferences
                 )
             }
         }
@@ -305,7 +323,10 @@ struct HomeView: View {
                         pdfProgressRepository: pdfProgressRepository,
                         pdfService: pdfService,
                         studySessionRepository: studySessionRepository,
-                        userPreferences: userPreferences
+                        userPreferences: userPreferences,
+                        calendarRepository: calendarRepository,
+                        notificationManager: notificationManager,
+                        calendarSyncService: calendarSyncService
                     )
                 } label: {
                     Label("See All", systemImage: "chevron.right")
@@ -344,7 +365,10 @@ struct HomeView: View {
                                     pdfProgressRepository: pdfProgressRepository,
                                     pdfService: pdfService,
                                     studySessionRepository: studySessionRepository,
-                                    userPreferences: userPreferences
+                                    userPreferences: userPreferences,
+                                    calendarRepository: calendarRepository,
+                                    notificationManager: notificationManager,
+                                    calendarSyncService: calendarSyncService
                                 )
                             } label: {
                                 CourseTileView(course: course)

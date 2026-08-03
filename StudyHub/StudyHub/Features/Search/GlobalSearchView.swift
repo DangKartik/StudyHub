@@ -11,6 +11,9 @@ struct GlobalSearchView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let userPreferences: UserPreferences
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     @State private var viewModel: GlobalSearchViewModel
     @State private var searchText = ""
@@ -28,7 +31,10 @@ struct GlobalSearchView: View {
         courseRepository: any CourseRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
-        pdfService: any PDFServiceProtocol
+        pdfService: any PDFServiceProtocol,
+        userPreferences: UserPreferences,
+        notificationManager: any NotificationSchedulingProtocol,
+        calendarSyncService: any CalendarSyncServiceProtocol
     ) {
         self.appState = appState
         self.semesterRepository = semesterRepository
@@ -40,6 +46,9 @@ struct GlobalSearchView: View {
         self.bookmarkRepository = bookmarkRepository
         self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
+        self.userPreferences = userPreferences
+        self.notificationManager = notificationManager
+        self.calendarSyncService = calendarSyncService
         _viewModel = State(wrappedValue: GlobalSearchViewModel(
             noteRepository: noteRepository,
             flashcardRepository: flashcardRepository,
@@ -174,7 +183,9 @@ struct GlobalSearchView: View {
                         readingRepository: readingRepository,
                         bookmarkRepository: bookmarkRepository,
                         pdfProgressRepository: pdfProgressRepository,
-                        pdfService: pdfService
+                        pdfService: pdfService,
+                        notificationManager: notificationManager,
+                        userPreferences: userPreferences
                     )
                 }
             }
