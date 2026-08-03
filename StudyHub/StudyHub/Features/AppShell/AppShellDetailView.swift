@@ -20,6 +20,9 @@ struct AppShellDetailView: View {
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
     let quoteRepository: any QuoteRepositoryProtocol
+    let calendarRepository: any CalendarRepositoryProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     var body: some View {
         NavigationStack {
@@ -48,7 +51,19 @@ struct AppShellDetailView: View {
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
                 pdfService: pdfService,
-                quoteRepository: quoteRepository
+                quoteRepository: quoteRepository,
+                calendarRepository: calendarRepository,
+                notificationManager: notificationManager,
+                calendarSyncService: calendarSyncService
+            )
+        case .calendar:
+            CalendarView(
+                appState: appState,
+                courseRepository: courseRepository,
+                assignmentRepository: assignmentRepository,
+                readingRepository: readingRepository,
+                lectureRepository: lectureRepository,
+                userPreferences: userPreferences
             )
         case .courses:
             CoursesView(
@@ -66,7 +81,10 @@ struct AppShellDetailView: View {
                 pdfProgressRepository: pdfProgressRepository,
                 pdfService: pdfService,
                 studySessionRepository: studySessionRepository,
-                userPreferences: userPreferences
+                userPreferences: userPreferences,
+                calendarRepository: calendarRepository,
+                notificationManager: notificationManager,
+                calendarSyncService: calendarSyncService
             )
         case .notes:
             NotesListView(
@@ -102,7 +120,9 @@ struct AppShellDetailView: View {
                 lectureRepository: lectureRepository,
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
-                pdfService: pdfService
+                pdfService: pdfService,
+                userPreferences: userPreferences,
+                notificationManager: notificationManager
             )
         case .statistics:
             AnalyticsView(
@@ -127,10 +147,21 @@ struct AppShellDetailView: View {
                 courseRepository: courseRepository,
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
-                pdfService: pdfService
+                pdfService: pdfService,
+                userPreferences: userPreferences,
+                notificationManager: notificationManager,
+                calendarSyncService: calendarSyncService
             )
         case .settings:
-            SettingsView(userPreferences: userPreferences)
+            SettingsView(
+                userPreferences: userPreferences,
+                notificationManager: notificationManager,
+                calendarSyncService: calendarSyncService,
+                appState: appState,
+                courseRepository: courseRepository,
+                lectureRepository: lectureRepository,
+                calendarRepository: calendarRepository
+            )
         case .some(let destination):
             StudyHubEmptyState(
                 icon: destination.systemImage,

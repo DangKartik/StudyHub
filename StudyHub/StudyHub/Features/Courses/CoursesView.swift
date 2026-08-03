@@ -16,6 +16,9 @@ struct CoursesView: View {
     let pdfService: any PDFServiceProtocol
     let studySessionRepository: any StudySessionRepositoryProtocol
     let userPreferences: UserPreferences
+    let calendarRepository: any CalendarRepositoryProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     @State private var viewModel: CoursesViewModel
     @State private var activeSheet: CourseSheet?
@@ -37,7 +40,10 @@ struct CoursesView: View {
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol,
         studySessionRepository: any StudySessionRepositoryProtocol,
-        userPreferences: UserPreferences
+        userPreferences: UserPreferences,
+        calendarRepository: any CalendarRepositoryProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        calendarSyncService: any CalendarSyncServiceProtocol
     ) {
         self.appState = appState
         self.courseRepository = courseRepository
@@ -54,6 +60,9 @@ struct CoursesView: View {
         self.pdfService = pdfService
         self.studySessionRepository = studySessionRepository
         self.userPreferences = userPreferences
+        self.calendarRepository = calendarRepository
+        self.notificationManager = notificationManager
+        self.calendarSyncService = calendarSyncService
         _viewModel = State(wrappedValue: CoursesViewModel(
             appState: appState,
             courseRepository: courseRepository,
@@ -109,7 +118,10 @@ struct CoursesView: View {
                         pdfProgressRepository: pdfProgressRepository,
                         pdfService: pdfService,
                         studySessionRepository: studySessionRepository,
-                        userPreferences: userPreferences
+                        userPreferences: userPreferences,
+                        calendarRepository: calendarRepository,
+                        notificationManager: notificationManager,
+                        calendarSyncService: calendarSyncService
                     )
                 } label: {
                     Label("Manage Semesters", systemImage: "calendar")
@@ -147,7 +159,10 @@ struct CoursesView: View {
                     pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService,
                     studySessionRepository: studySessionRepository,
-                    userPreferences: userPreferences
+                    userPreferences: userPreferences,
+                    calendarRepository: calendarRepository,
+                    notificationManager: notificationManager,
+                    calendarSyncService: calendarSyncService
                 )
             }
         }

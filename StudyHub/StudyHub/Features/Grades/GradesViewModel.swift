@@ -5,13 +5,28 @@ import Foundation
 final class GradesViewModel {
     private let course: Course
     private let courseRepository: any CourseRepositoryProtocol
+    private let notificationManager: any NotificationSchedulingProtocol
+    private let calendarSyncService: any CalendarSyncServiceProtocol
+    private let calendarRepository: any CalendarRepositoryProtocol
+    private let userPreferences: UserPreferences
 
     private(set) var assessments: [Assessment] = []
     private(set) var loadError: StudyHubError?
 
-    init(course: Course, courseRepository: any CourseRepositoryProtocol) {
+    init(
+        course: Course,
+        courseRepository: any CourseRepositoryProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        calendarSyncService: any CalendarSyncServiceProtocol,
+        calendarRepository: any CalendarRepositoryProtocol,
+        userPreferences: UserPreferences
+    ) {
         self.course = course
         self.courseRepository = courseRepository
+        self.notificationManager = notificationManager
+        self.calendarSyncService = calendarSyncService
+        self.calendarRepository = calendarRepository
+        self.userPreferences = userPreferences
     }
 
     var currentGrade: Double? {
@@ -111,6 +126,9 @@ final class GradesViewModel {
                 }
                 try courseRepository.createAttachment(attachment, for: assessment)
             }
+            scheduleNotifications(for: assessment)
+            syncCalendarEvent(for: assessment)
+            try? courseRepository.save()
             loadGrades()
         } catch let error as StudyHubError {
             loadError = error
@@ -144,6 +162,9 @@ final class GradesViewModel {
 
         do {
             try courseRepository.save()
+            scheduleNotifications(for: assessment)
+            syncCalendarEvent(for: assessment)
+            try? courseRepository.save()
             loadGrades()
         } catch let error as StudyHubError {
             loadError = error
@@ -153,6 +174,11 @@ final class GradesViewModel {
     }
 
     func deleteAssessment(_ assessment: Assessment) {
+        notificationManager.cancelNotifications(ids: [dueSoonNotificationID(for: assessment), reflectionNotificationID(for: assessment)])
+        if let reference = assessment.calendarEventReference {
+            calendarSyncService.deleteEvent(identifier: reference.eventIdentifier)
+        }
+
         do {
             try courseRepository.deleteAssessment(assessment)
             loadGrades()
@@ -160,6 +186,64 @@ final class GradesViewModel {
             loadError = error
         } catch {
             loadError = PersistenceError.deleteFailed(underlying: error)
+        }
+    }
+
+    private func dueSoonNotificationID(for assessment: Assessment) -> String {
+        "assessment-dueSoon-\(assessment.id)"
+    }
+
+    private func reflectionNotificationID(for assessment: Assessment) -> String {
+        "assessment-reflection-\(assessment.id)"
+    }
+
+    /// Only `.exam` kind assessments get notifications — matches the
+    /// existing "important upcoming" convention Home/Course Detail already
+    /// use for exams vs. quizzes (see `HomeViewModel.upcomingExams`).
+    private func scheduleNotifications(for assessment: Assessment) {
+        let dueSoonID = dueSoonNotificationID(for: assessment)
+        let reflectionID = reflectionNotificationID(for: assessment)
+        notificationManager.cancelNotifications(ids: [dueSoonID, reflectionID])
+        guard userPreferences.notificationsEnabled, assessment.kind == .exam else { return }
+
+        let courseLabel = course.name.isEmpty ? course.courseCode : course.name
+        let fireDate = Calendar.current.date(byAdding: .hour, value: -userPreferences.dueSoonReminderLeadHours, to: assessment.date) ?? assessment.date
+        notificationManager.scheduleNotification(
+            id: dueSoonID,
+            title: "Exam Due Soon",
+            body: courseLabel.isEmpty ? assessment.title : "\(assessment.title) — \(courseLabel)",
+            date: fireDate
+        )
+
+        if userPreferences.examReflectionNudgeEnabled, !assessment.hasReflected {
+            notificationManager.scheduleNotification(
+                id: reflectionID,
+                title: "How did it go?",
+                body: courseLabel.isEmpty ? assessment.title : "\(assessment.title) — \(courseLabel)",
+                date: assessment.date
+            )
+        }
+    }
+
+    private func syncCalendarEvent(for assessment: Assessment) {
+        guard userPreferences.calendarPushEnabled, assessment.kind == .exam else { return }
+        let endDate = assessment.duration > 0 ? assessment.date.addingTimeInterval(assessment.duration) : assessment.date
+        let identifier = calendarSyncService.upsertStudyHubEvent(
+            existingIdentifier: assessment.calendarEventReference?.eventIdentifier,
+            title: assessment.title,
+            startDate: assessment.date,
+            endDate: endDate,
+            location: assessment.location
+        )
+        guard let identifier else { return }
+        if let reference = assessment.calendarEventReference {
+            reference.eventIdentifier = identifier
+            reference.syncStatus = .synced
+            reference.lastSynced = .now
+        } else {
+            let reference = CalendarEventReference(eventIdentifier: identifier, calendarIdentifier: "", lastSynced: .now, syncStatus: .synced)
+            try? calendarRepository.create(reference)
+            assessment.calendarEventReference = reference
         }
     }
 
@@ -197,6 +281,7 @@ final class GradesViewModel {
         assessment.updatedAt = Date.now
         do {
             try courseRepository.save()
+            notificationManager.cancelNotification(id: reflectionNotificationID(for: assessment))
             loadGrades()
         } catch let error as StudyHubError {
             loadError = error

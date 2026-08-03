@@ -24,6 +24,9 @@ struct SemesterCoursesView: View {
     let pdfService: any PDFServiceProtocol
     let studySessionRepository: any StudySessionRepositoryProtocol
     let userPreferences: UserPreferences
+    let calendarRepository: any CalendarRepositoryProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     @State private var courseForDetail: Course?
 
@@ -78,7 +81,10 @@ struct SemesterCoursesView: View {
                     pdfProgressRepository: pdfProgressRepository,
                     pdfService: pdfService,
                     studySessionRepository: studySessionRepository,
-                    userPreferences: userPreferences
+                    userPreferences: userPreferences,
+                    calendarRepository: calendarRepository,
+                    notificationManager: notificationManager,
+                    calendarSyncService: calendarSyncService
                 )
             }
         }

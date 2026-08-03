@@ -41,6 +41,14 @@ final class UserPreferences {
     private static let appearanceKey = "appearancePreference"
     private static let userNameKey = "userName"
     private static let defaultLectureDurationMinutesKey = "defaultLectureDurationMinutes"
+    private static let notificationsEnabledKey = "notificationsEnabled"
+    private static let dueSoonReminderLeadHoursKey = "dueSoonReminderLeadHours"
+    private static let dailyDigestEnabledKey = "dailyDigestEnabled"
+    private static let dailyDigestHourKey = "dailyDigestHour"
+    private static let examReflectionNudgeEnabledKey = "examReflectionNudgeEnabled"
+    private static let remindersSyncEnabledKey = "remindersSyncEnabled"
+    private static let calendarPushEnabledKey = "calendarPushEnabled"
+    private static let lectureSourceCalendarIdentifierKey = "lectureSourceCalendarIdentifier"
 
     private let defaults: UserDefaults
 
@@ -76,6 +84,74 @@ final class UserPreferences {
         }
     }
 
+    /// Master switch for every local notification (due-soon reminders,
+    /// daily digest, exam reflection nudge). Off by default — turning it on
+    /// in Settings is what triggers the system permission prompt.
+    var notificationsEnabled: Bool {
+        didSet {
+            defaults.set(notificationsEnabled, forKey: Self.notificationsEnabledKey)
+        }
+    }
+
+    /// How long before an Assignment/Exam/Reading is due its "due soon"
+    /// notification fires — one shared lead time for all three rather than
+    /// a separate setting per type, to keep this configurable without
+    /// turning into its own maze of options.
+    var dueSoonReminderLeadHours: Int {
+        didSet {
+            defaults.set(dueSoonReminderLeadHours, forKey: Self.dueSoonReminderLeadHoursKey)
+        }
+    }
+
+    var dailyDigestEnabled: Bool {
+        didSet {
+            defaults.set(dailyDigestEnabled, forKey: Self.dailyDigestEnabledKey)
+        }
+    }
+
+    /// 24-hour clock hour the daily flashcard/active-recall digest fires at.
+    var dailyDigestHour: Int {
+        didSet {
+            defaults.set(dailyDigestHour, forKey: Self.dailyDigestHourKey)
+        }
+    }
+
+    var examReflectionNudgeEnabled: Bool {
+        didSet {
+            defaults.set(examReflectionNudgeEnabled, forKey: Self.examReflectionNudgeEnabledKey)
+        }
+    }
+
+    /// Push Assignments to a dedicated "StudyHub" Reminders list, with
+    /// completion synced back on load — separate from `notificationsEnabled`
+    /// since this is EventKit access, not `UserNotifications`.
+    var remindersSyncEnabled: Bool {
+        didSet {
+            defaults.set(remindersSyncEnabled, forKey: Self.remindersSyncEnabledKey)
+        }
+    }
+
+    /// Push Assignments + Exams into a dedicated "StudyHub Deadlines"
+    /// Apple Calendar. Independent of a course's `linkedCalendarIdentifier`
+    /// (lecture import), which always runs once a course has one set.
+    var calendarPushEnabled: Bool {
+        didSet {
+            defaults.set(calendarPushEnabled, forKey: Self.calendarPushEnabledKey)
+        }
+    }
+
+    /// `EKCalendar.calendarIdentifier` of a single existing Apple Calendar
+    /// every course's Lectures import from — one global setting rather than
+    /// a per-course pick, since most students have one timetable calendar
+    /// covering every class. Syncing matches each event to a course by
+    /// checking whether the event's title contains that course's name or
+    /// code (see `SettingsViewModel.syncAllLectures`).
+    var lectureSourceCalendarIdentifier: String? {
+        didSet {
+            defaults.set(lectureSourceCalendarIdentifier, forKey: Self.lectureSourceCalendarIdentifierKey)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if defaults.object(forKey: Self.weekStartsOnMondayKey) == nil {
@@ -97,6 +173,32 @@ final class UserPreferences {
         } else {
             defaultLectureDurationMinutes = defaults.integer(forKey: Self.defaultLectureDurationMinutesKey)
         }
+
+        notificationsEnabled = defaults.bool(forKey: Self.notificationsEnabledKey)
+
+        if defaults.object(forKey: Self.dueSoonReminderLeadHoursKey) == nil {
+            dueSoonReminderLeadHours = 24
+        } else {
+            dueSoonReminderLeadHours = defaults.integer(forKey: Self.dueSoonReminderLeadHoursKey)
+        }
+
+        dailyDigestEnabled = defaults.bool(forKey: Self.dailyDigestEnabledKey)
+
+        if defaults.object(forKey: Self.dailyDigestHourKey) == nil {
+            dailyDigestHour = 9
+        } else {
+            dailyDigestHour = defaults.integer(forKey: Self.dailyDigestHourKey)
+        }
+
+        if defaults.object(forKey: Self.examReflectionNudgeEnabledKey) == nil {
+            examReflectionNudgeEnabled = true
+        } else {
+            examReflectionNudgeEnabled = defaults.bool(forKey: Self.examReflectionNudgeEnabledKey)
+        }
+
+        remindersSyncEnabled = defaults.bool(forKey: Self.remindersSyncEnabledKey)
+        calendarPushEnabled = defaults.bool(forKey: Self.calendarPushEnabledKey)
+        lectureSourceCalendarIdentifier = defaults.string(forKey: Self.lectureSourceCalendarIdentifierKey)
     }
 
     /// A `Calendar` configured to agree with this preference — pass this

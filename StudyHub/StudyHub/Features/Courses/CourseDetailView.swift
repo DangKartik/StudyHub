@@ -23,6 +23,9 @@ struct CourseDetailView: View {
     let pdfService: any PDFServiceProtocol
     let studySessionRepository: any StudySessionRepositoryProtocol
     let userPreferences: UserPreferences
+    let calendarRepository: any CalendarRepositoryProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     @State private var viewModel: CourseDetailViewModel
     /// `sheet(item:)` rather than a bool, matching every other feature's
@@ -57,7 +60,10 @@ struct CourseDetailView: View {
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
         pdfService: any PDFServiceProtocol,
         studySessionRepository: any StudySessionRepositoryProtocol,
-        userPreferences: UserPreferences
+        userPreferences: UserPreferences,
+        calendarRepository: any CalendarRepositoryProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        calendarSyncService: any CalendarSyncServiceProtocol
     ) {
         self.course = course
         self.appState = appState
@@ -75,6 +81,9 @@ struct CourseDetailView: View {
         self.pdfService = pdfService
         self.studySessionRepository = studySessionRepository
         self.userPreferences = userPreferences
+        self.calendarRepository = calendarRepository
+        self.notificationManager = notificationManager
+        self.calendarSyncService = calendarSyncService
         _viewModel = State(wrappedValue: CourseDetailViewModel(
             course: course,
             courseRepository: courseRepository,
@@ -171,7 +180,7 @@ struct CourseDetailView: View {
         }) {
             if let assignmentForQuickStatus {
                 AssignmentQuickStatusView(
-                    viewModel: AssignmentsViewModel(course: course, assignmentRepository: assignmentRepository),
+                    viewModel: AssignmentsViewModel(course: course, assignmentRepository: assignmentRepository, notificationManager: notificationManager, calendarSyncService: calendarSyncService, calendarRepository: calendarRepository, userPreferences: userPreferences),
                     assignment: assignmentForQuickStatus
                 )
             }
@@ -200,7 +209,9 @@ struct CourseDetailView: View {
                 readingRepository: readingRepository,
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
-                pdfService: pdfService
+                pdfService: pdfService,
+                notificationManager: notificationManager,
+                userPreferences: userPreferences
             )
         }
         .onAppear {
@@ -411,7 +422,9 @@ struct CourseDetailView: View {
                         readingRepository: readingRepository,
                         bookmarkRepository: bookmarkRepository,
                         pdfProgressRepository: pdfProgressRepository,
-                        pdfService: pdfService
+                        pdfService: pdfService,
+                        notificationManager: notificationManager,
+                        userPreferences: userPreferences
                     )
                 } label: {
                     CourseSectionCard(icon: "book.fill", title: "Readings", tint: .orange)
@@ -423,7 +436,11 @@ struct CourseDetailView: View {
                         assignmentRepository: assignmentRepository,
                         bookmarkRepository: bookmarkRepository,
                         pdfProgressRepository: pdfProgressRepository,
-                        pdfService: pdfService
+                        pdfService: pdfService,
+                        notificationManager: notificationManager,
+                        calendarSyncService: calendarSyncService,
+                        calendarRepository: calendarRepository,
+                        userPreferences: userPreferences
                     )
                 } label: {
                     CourseSectionCard(icon: "checklist", title: "Assignments", tint: .indigo)
@@ -463,7 +480,11 @@ struct CourseDetailView: View {
                         courseRepository: courseRepository,
                         bookmarkRepository: bookmarkRepository,
                         pdfProgressRepository: pdfProgressRepository,
-                        pdfService: pdfService
+                        pdfService: pdfService,
+                        notificationManager: notificationManager,
+                        calendarSyncService: calendarSyncService,
+                        calendarRepository: calendarRepository,
+                        userPreferences: userPreferences
                     )
                 } label: {
                     CourseSectionCard(icon: "chart.bar.fill", title: "Grades & Exams", tint: .green)

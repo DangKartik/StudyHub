@@ -26,7 +26,10 @@ struct StudyHubApp: App {
                 bookmarkRepository: container.bookmarkRepository,
                 pdfProgressRepository: container.pdfProgressRepository,
                 pdfService: container.pdfService,
-                quoteRepository: container.quoteRepository
+                quoteRepository: container.quoteRepository,
+                calendarRepository: container.calendarRepository,
+                notificationManager: container.notificationManager,
+                calendarSyncService: container.calendarSyncService
             )
         }
         .onChange(of: scenePhase, initial: true) { _, phase in

@@ -13,14 +13,22 @@ struct AssignmentListView: View {
         assignmentRepository: any AssignmentRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
-        pdfService: any PDFServiceProtocol
+        pdfService: any PDFServiceProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        calendarSyncService: any CalendarSyncServiceProtocol,
+        calendarRepository: any CalendarRepositoryProtocol,
+        userPreferences: UserPreferences
     ) {
         self.bookmarkRepository = bookmarkRepository
         self.pdfProgressRepository = pdfProgressRepository
         self.pdfService = pdfService
         _viewModel = State(wrappedValue: AssignmentsViewModel(
             course: course,
-            assignmentRepository: assignmentRepository
+            assignmentRepository: assignmentRepository,
+            notificationManager: notificationManager,
+            calendarSyncService: calendarSyncService,
+            calendarRepository: calendarRepository,
+            userPreferences: userPreferences
         ))
     }
 
@@ -71,6 +79,7 @@ struct AssignmentListView: View {
         }
         .onAppear {
             viewModel.loadAssignments()
+            viewModel.reconcileReminderCompletion()
         }
     }
 

@@ -20,8 +20,16 @@ final class Assignment {
     @Relationship(deleteRule: .cascade, inverse: \Attachment.assignment)
     var attachments: [Attachment] = []
 
+    /// The Calendar event pushed for this Assignment's due date.
     @Relationship(deleteRule: .cascade)
     var calendarEventReference: CalendarEventReference?
+
+    /// A second, independent external link — the Reminders item pushed for
+    /// this Assignment. Kept separate from `calendarEventReference` because
+    /// an Assignment can be pushed to both Calendar and Reminders at once,
+    /// and each is tracked by its own `EKCalendarItem` identifier.
+    @Relationship(deleteRule: .cascade)
+    var reminderReference: CalendarEventReference?
 
     init(
         id: UUID = UUID(),

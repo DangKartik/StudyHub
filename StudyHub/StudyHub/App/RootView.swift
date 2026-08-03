@@ -19,6 +19,9 @@ struct RootView: View {
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
     let quoteRepository: any QuoteRepositoryProtocol
+    let calendarRepository: any CalendarRepositoryProtocol
+    let notificationManager: any NotificationSchedulingProtocol
+    let calendarSyncService: any CalendarSyncServiceProtocol
 
     /// Past, un-reflected assessments (see `Assessment.hasReflected`),
     /// oldest first — presented one at a time so a long-neglected app
@@ -49,7 +52,10 @@ struct RootView: View {
             bookmarkRepository: bookmarkRepository,
             pdfProgressRepository: pdfProgressRepository,
             pdfService: pdfService,
-            quoteRepository: quoteRepository
+            quoteRepository: quoteRepository,
+            calendarRepository: calendarRepository,
+            notificationManager: notificationManager,
+            calendarSyncService: calendarSyncService
         )
         .preferredColorScheme(userPreferences.appearance.colorScheme)
         .onAppear {
@@ -63,10 +69,12 @@ struct RootView: View {
                     assessment.reflectionNote = note
                     assessment.updatedAt = .now
                     try? courseRepository.save()
+                    notificationManager.cancelNotification(id: "assessment-reflection-\(assessment.id)")
                 },
                 onSkip: {
                     assessment.reflectionDismissedAt = .now
                     try? courseRepository.save()
+                    notificationManager.cancelNotification(id: "assessment-reflection-\(assessment.id)")
                 }
             )
         }

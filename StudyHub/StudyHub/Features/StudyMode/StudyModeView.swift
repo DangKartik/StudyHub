@@ -16,6 +16,8 @@ struct StudyModeView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
+    let userPreferences: UserPreferences
+    let notificationManager: any NotificationSchedulingProtocol
 
     @State private var courses: [Course] = []
     @State private var selectedCourse: Course?
@@ -56,7 +58,9 @@ struct StudyModeView: View {
                 readingRepository: readingRepository,
                 bookmarkRepository: bookmarkRepository,
                 pdfProgressRepository: pdfProgressRepository,
-                pdfService: pdfService
+                pdfService: pdfService,
+                userPreferences: userPreferences,
+                notificationManager: notificationManager
             )
         }
     }

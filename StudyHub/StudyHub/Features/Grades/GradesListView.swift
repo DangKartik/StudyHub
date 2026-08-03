@@ -13,11 +13,19 @@ struct GradesListView: View {
         courseRepository: any CourseRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,
         pdfProgressRepository: any PDFProgressRepositoryProtocol,
-        pdfService: any PDFServiceProtocol
+        pdfService: any PDFServiceProtocol,
+        notificationManager: any NotificationSchedulingProtocol,
+        calendarSyncService: any CalendarSyncServiceProtocol,
+        calendarRepository: any CalendarRepositoryProtocol,
+        userPreferences: UserPreferences
     ) {
         _viewModel = State(wrappedValue: GradesViewModel(
             course: course,
-            courseRepository: courseRepository
+            courseRepository: courseRepository,
+            notificationManager: notificationManager,
+            calendarSyncService: calendarSyncService,
+            calendarRepository: calendarRepository,
+            userPreferences: userPreferences
         ))
         self.bookmarkRepository = bookmarkRepository
         self.pdfProgressRepository = pdfProgressRepository

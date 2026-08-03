@@ -12,6 +12,7 @@ final class HomeViewModel {
     private let activeRecallRepository: any ActiveRecallRepositoryProtocol
     private let studySessionRepository: any StudySessionRepositoryProtocol
     private let quoteRepository: any QuoteRepositoryProtocol
+    private let notificationManager: any NotificationSchedulingProtocol
 
     private(set) var activeSemester: Semester?
     private(set) var courseCount: Int = 0
@@ -69,7 +70,8 @@ final class HomeViewModel {
         flashcardRepository: any FlashcardRepositoryProtocol,
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
         studySessionRepository: any StudySessionRepositoryProtocol,
-        quoteRepository: any QuoteRepositoryProtocol
+        quoteRepository: any QuoteRepositoryProtocol,
+        notificationManager: any NotificationSchedulingProtocol
     ) {
         self.appState = appState
         self.userPreferences = userPreferences
@@ -80,7 +82,10 @@ final class HomeViewModel {
         self.activeRecallRepository = activeRecallRepository
         self.studySessionRepository = studySessionRepository
         self.quoteRepository = quoteRepository
+        self.notificationManager = notificationManager
     }
+
+    private static let dailyDigestNotificationID = "dailyFlashcardDigest"
 
     func loadDashboard() {
         defer { isLoading = false }
@@ -225,5 +230,30 @@ final class HomeViewModel {
         if let quote = try? quoteRepository.nextQuote() {
             quoteOfTheDay = quote.text
         }
+
+        refreshDailyDigestNotification()
+    }
+
+    /// Re-adding a daily-repeating request under the same identifier
+    /// atomically replaces the previous one — so calling this on every
+    /// Home load keeps the digest's body text current with the live due
+    /// count without ever creating a duplicate notification.
+    private func refreshDailyDigestNotification() {
+        guard userPreferences.notificationsEnabled, userPreferences.dailyDigestEnabled else {
+            notificationManager.cancelNotification(id: Self.dailyDigestNotificationID)
+            return
+        }
+        let total = dueFlashcardsCount + dueQuestionsCount
+        guard total > 0 else {
+            notificationManager.cancelNotification(id: Self.dailyDigestNotificationID)
+            return
+        }
+        notificationManager.scheduleDailyNotification(
+            id: Self.dailyDigestNotificationID,
+            title: "Review Time",
+            body: "\(total) card\(total == 1 ? "" : "s") waiting for review.",
+            hour: userPreferences.dailyDigestHour,
+            minute: 0
+        )
     }
 }
