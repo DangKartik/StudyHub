@@ -3,6 +3,7 @@
 <p align="center"><b>A native iPad app that keeps a student's semesters, courses, lectures, readings, notes, flashcards, grades and study sessions in one SwiftData graph, so every item knows where it came from.</b></p>
 
 <p align="center">
+  <a href="https://github.com/DangKartik/StudyHub/actions/workflows/build.yml"><img alt="build" src="https://github.com/DangKartik/StudyHub/actions/workflows/build.yml/badge.svg"></a>
   <img alt="Swift" src="https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white">
   <img alt="SwiftUI" src="https://img.shields.io/badge/SwiftUI-0D96F6?logo=swift&logoColor=white">
   <img alt="SwiftData" src="https://img.shields.io/badge/SwiftData-1F6FEB">
@@ -82,7 +83,7 @@ Calendar, reminder and notification features ask for permission on first use. Th
 
 ## Limitations and what I would do next
 
-- **No automated tests.** The calculators and the scheduler are pure functions and the repositories sit behind protocols, so unit tests are straightforward to add; they are the first thing I would write.
+- **No automated tests yet.** CI builds the app for the iPad simulator on every push, but nothing is unit-tested. The calculators and the scheduler are pure functions and the repositories sit behind protocols, so tests are straightforward to add; they are the first thing I would write.
 - **iCloud sync is not provisioned**, so data stays on one device.
 - **Not hardened for release.** `ModelContainerFactory` stops the app if the store cannot open, and there is no schema migration plan yet.
 - **iPad only.** The layout is built around `NavigationSplitView` and Pencil input; an iPhone layout would need its own navigation.
