@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Dedicated Analytics dashboard (Phase 4.5) — entirely read-only, computed
+/// Dedicated Analytics dashboard — entirely read-only, computed
 /// fresh from existing repositories each time it appears. Reuses the
 /// sidebar's existing `.statistics` destination, which had no real screen
 /// behind it until now (same dead-stub shape `.resources` had before it was

@@ -13,20 +13,19 @@ final class Note {
     var lecture: Lecture?
     var reading: Reading?
 
-    /// Filterable/displayable/editable in the global Notes list (Phase 3.1);
-    /// full tag editor lives in NoteFormView (Phase 3.1 Tags follow-up).
+    /// Filterable/displayable/editable in the global Notes list;
+    /// full tag editor lives in NoteFormView.
     var tags: [String] = []
 
-    /// Phase 3.1 foundation field — no UI sets this yet, reserved for a future
-    /// PDF-linking phase. See DECISION-031.
+    /// Reserved for linking a note to a PDF page; no UI sets it yet.
     var sourcePage: Int?
 
     @Relationship(deleteRule: .cascade, inverse: \Attachment.note)
     var attachments: [Attachment] = []
 
-    /// The note's single owner (DECISION-031): Lecture name, else Reading
+    /// The note's single owner: Lecture name, else Reading
     /// title, else Course name — exactly one is ever set. "Unfiled" for a
-    /// note whose owner was nullified by a Reading deletion (DECISION-032).
+    /// note whose owner was nullified by a Reading deletion.
     /// Single shared implementation for `NotesListView`'s row and
     /// `NoteDetailView`'s preview, both of which display it.
     var ownerContextLabel: String {
@@ -53,15 +52,14 @@ final class Note {
         updatedAt != createdAt
     }
 
-    /// Flashcards derived from this Note (Phase 4.1, DECISION-034).
+    /// Flashcards derived from this Note.
     /// `.nullify`, not `.cascade` — deleting a Note shouldn't destroy
     /// Flashcards that merely reference it, same reasoning as
-    /// DECISION-032's Reading -> Note relationship.
+    /// the Reading -> Note relationship.
     @Relationship(deleteRule: .nullify, inverse: \Flashcard.note)
     var linkedFlashcards: [Flashcard] = []
 
-    /// Active Recall questions derived from this Note (Phase 4.2,
-    /// DECISION-035). `.nullify` for the same reason as `linkedFlashcards`.
+    /// Active Recall questions derived from this Note. `.nullify` for the same reason as `linkedFlashcards`.
     @Relationship(deleteRule: .nullify, inverse: \ActiveRecallQuestion.note)
     var linkedActiveRecallQuestions: [ActiveRecallQuestion] = []
 

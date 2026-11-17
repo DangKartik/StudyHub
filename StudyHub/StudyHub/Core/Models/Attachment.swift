@@ -11,7 +11,7 @@ final class Attachment {
     var createdAt: Date = Date.now
 
     /// Serialized `PKDrawing.dataRepresentation()` for this attachment's PDF
-    /// markup, in PDF page-native coordinate space (Phase 3N.6.4) — never
+    /// markup, in PDF page-native coordinate space — never
     /// raster/flattened, always re-hydrated via `PKDrawing(data:)`.
     /// `.externalStorage` keeps drawing blobs out of the inline row, same
     /// reasoning as every other binary-ish field in this app.

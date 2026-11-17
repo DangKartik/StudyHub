@@ -1,15 +1,15 @@
 import Foundation
 
-/// Drives a single review pass over a fixed set of questions (Phase 4.2).
+/// Drives a single review pass over a fixed set of questions.
 /// Rating records the rating — `difficulty`/`lastReviewed`/`reviewCount`
-/// per DECISION-035 — and immediately computes its next review via the
-/// shared `SpacedRepetitionScheduler` (Phase 4.4, DECISION-038), then
+/// — and immediately computes its next review via the
+/// shared `SpacedRepetitionScheduler`, then
 /// advances to the next question. Mirrors `FlashcardReviewViewModel`.
 @MainActor
 @Observable
 final class ActiveRecallReviewViewModel {
     private let activeRecallRepository: any ActiveRecallRepositoryProtocol
-    /// Phase 4.3 (Study Mode) — invoked once per successful rating, so an
+    /// Study Mode hook — invoked once per successful rating, so an
     /// embedding Study Session can tally "Questions answered" live.
     private let onRate: (() -> Void)?
 

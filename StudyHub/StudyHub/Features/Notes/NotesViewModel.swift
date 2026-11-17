@@ -42,7 +42,7 @@ final class NotesViewModel {
     enum Scope {
         case course(Course)
         case lecture(Lecture)
-        /// Cross-course "All Notes" browsing (Phase 3.1) — backed by
+        /// Cross-course "All Notes" browsing — backed by
         /// `fetchAll()`, not a relationship walk. Read-only: notes have no
         /// unambiguous owner to assign from this scope, so creation is
         /// disabled here (see `supportsCreation`).
@@ -62,7 +62,7 @@ final class NotesViewModel {
 
     /// Resolves the Lecture-picker's owning course (and that course's
     /// lectures) for any scope — previously the picker only ever appeared
-    /// from `.course` scope (DECISION-030's original scope), so the exact
+    /// from `.course` scope, so the exact
     /// same note showed the option to link a Lecture when edited from a
     /// Course's Notes tab but not when edited from a single Lecture's Notes
     /// tab, Global Search, or the Flashcards note-viewing sheet — all of
@@ -108,7 +108,7 @@ final class NotesViewModel {
     /// repository call needed, since aggregation already loaded the full
     /// candidate set. `searchText` matches title or body (case/diacritic
     /// insensitive); `tag`, when set, requires an exact match in the note's
-    /// `tags` array. Both are in-memory per DECISION-031's foundation scope —
+    /// `tags` array. Both are in-memory —
     /// no repository-level search is introduced.
     func displayedNotes(filter: NoteFilter, sortOrder: NoteSortOrder, searchText: String = "", tag: String? = nil) -> [Note] {
         var filtered: [Note]
@@ -165,14 +165,14 @@ final class NotesViewModel {
     }
 
     /// `lecture` is only meaningful when this screen's scope is `.course` — it
-    /// lets Course Notes creation optionally target a specific Lecture instead
-    /// (see DECISION-030). When scope is `.lecture`, the parameter is ignored
+    /// lets Course Notes creation optionally target a specific Lecture instead.
+    /// When scope is `.lecture`, the parameter is ignored
     /// and the note is attached to that Lecture exactly as before.
     ///
     /// `attachments` are staged, not-yet-inserted `Attachment` objects built
     /// while composing the note (e.g. an imported PDF picked before the note
     /// existed). A staged `.pdf` attachment's `url` holds a *temporary* path
-    /// (see Phase 3N.4 Part 3) — it's finalized into permanent storage here,
+    /// — it's finalized into permanent storage here,
     /// only once the note is actually being saved, before being linked and
     /// saved via the same `createAttachment(_:for:)` path `addAttachment` uses.
     func createNote(title: String, body: String, lecture: Lecture? = nil, tags: [String] = [], attachments: [Attachment] = []) {
@@ -236,7 +236,7 @@ final class NotesViewModel {
     /// `lectureContext(for:)` so this works from any scope, not just
     /// `.course`. `lecture: nil` means "Course Only"; exactly one of
     /// `note.course`/`note.lecture` is ever set afterward, preserving
-    /// DECISION-031's single-owner rule. No-ops for a Reading-owned note
+    /// the single-owner rule. No-ops for a Reading-owned note
     /// (no resolvable course context).
     func updateNoteOwnership(_ note: Note, lecture: Lecture?) {
         guard let course = lectureContext(for: note)?.course else { return }
@@ -295,7 +295,7 @@ final class NotesViewModel {
         }
     }
 
-    /// Persists a PDF's PencilKit markup (Phase 3N.6.4) — no list reload
+    /// Persists a PDF's PencilKit markup — no list reload
     /// needed, since markup data isn't shown in any Note row.
     func saveMarkup(_ data: Data, for attachment: Attachment) {
         attachment.markupData = data

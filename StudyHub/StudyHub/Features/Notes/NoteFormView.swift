@@ -91,7 +91,7 @@ struct NoteFormView: View {
                 // AttachmentFormView always stages PDFs to temporary storage and
                 // never finalizes them itself — the caller decides when a file
                 // actually becomes permanent, since that depends on whether this
-                // Note is already saved (see Part 3 / DECISION-029 successor logic
+                // Note is already saved (see the save logic
                 // below) or still being composed.
                 AttachmentFormView { filename, type, tempOrURLValue in
                     if let note {
@@ -200,8 +200,7 @@ struct NoteFormView: View {
 
     /// Markdown-formatted editor (headings/bold/italic/lists/code blocks)
     /// with live inline styling — no separate Preview mode, the
-    /// formatting shows directly in the same view you type in. See
-    /// DECISION-033 for why formatting is stored as Markdown text in
+    /// formatting shows directly in the same view you type in. Formatting is stored as Markdown text in
     /// `body: String` rather than rich-text data.
     @ViewBuilder
     private var contentSection: some View {

@@ -13,27 +13,26 @@ final class ActiveRecallQuestion {
     var createdAt: Date = Date.now
     var updatedAt: Date = Date.now
 
-    /// Direct Course ownership (Phase 4.2, DECISION-036) — a question can
+    /// Direct Course ownership — a question can
     /// attach to a Course with no specific Lecture, mirroring
-    /// `Flashcard.course`/`Flashcard.lecture` exactly. Reverses DECISION-027's
-    /// original Lecture-only stance; see DECISION-036 for why.
+    /// `Flashcard.course`/`Flashcard.lecture` exactly.
     var course: Course?
     var lecture: Lecture?
 
     var note: Note?
     var flashcard: Flashcard?
 
-    /// Filterable in the Active Recall library (Phase 4.2).
+    /// Filterable in the Active Recall library.
     var tags: [String] = []
 
-    /// Phase 4.2 — incremented on every Review Mode rating, alongside the
-    /// already-existing `difficulty`/`lastReviewed` (dormant since Phase 2,
-    /// same as Flashcard's equivalents).
+    /// Incremented on every Review Mode rating, alongside the
+    /// already-existing `difficulty`/`lastReviewed`, same as
+    /// Flashcard's equivalents.
     var reviewCount: Int = 0
 
-    /// SM-2 scheduling state (Phase 4.4, DECISION-038) — mirrors
+    /// SM-2 scheduling state — mirrors
     /// `Flashcard.easeFactor`/`.interval`/`.repetitionCount` exactly, which
-    /// already existed there from Phase 2 but were never added here.
+    /// already existed there.
     /// `repetitionCount` is the SM-2 streak (resets on "Again"), distinct
     /// from `reviewCount` (a lifetime total that never resets).
     var easeFactor: Double = 2.5

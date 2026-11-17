@@ -11,9 +11,7 @@ protocol ActiveRecallRepositoryProtocol {
     func count() throws -> Int
 
     func fetch(forLecture lecture: Lecture) throws -> [ActiveRecallQuestion]
-    /// Course-owned + every Lecture-owned question combined (Phase 4.2,
-    /// DECISION-036 — ActiveRecallQuestion now has a direct Course
-    /// relationship alongside Lecture, mirroring Flashcard). Both sets are
+    /// Course-owned + every Lecture-owned question combined. Both sets are
     /// structurally exclusive (a question is ever only `.course` or
     /// `.lecture`, never both — see `ActiveRecallViewModel.createQuestion`),
     /// so this concatenation cannot duplicate a question. Mirrors

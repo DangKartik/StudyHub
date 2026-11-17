@@ -3,7 +3,7 @@ import UIKit
 
 /// A single formatting action requested by `NoteMarkdownToolbar`, applied to
 /// `NoteMarkdownEditor`'s underlying `UITextView` at its current selection.
-/// See DECISION-033: formatting is written as Markdown syntax into the
+/// Formatting is written as Markdown syntax into the
 /// existing `Note.body: String`, not as rich-text data — this editor then
 /// *displays* that same plain Markdown text with cursor-aware live styling,
 /// Obsidian Live Preview-style: whichever line(s) the cursor is NOT on
@@ -46,7 +46,7 @@ final class NoteMarkdownEditorController {
 /// cursor/selection range on this project's iOS 18 deployment target (the
 /// richer `TextEditor(text: AttributedString, selection:)` API needs a newer
 /// OS) — formatting actions like "wrap the selected text in `**...**`" need
-/// that range, so this wraps `UITextView` directly instead, per DECISION-033.
+/// that range, so this wraps `UITextView` directly instead.
 struct NoteMarkdownEditor: UIViewRepresentable {
     @Binding var text: String
     let controller: NoteMarkdownEditorController

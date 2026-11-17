@@ -1,12 +1,11 @@
 import Combine
 import SwiftUI
 
-/// The active Study Session (Phase 4.3, requirements 2-4): a Pomodoro timer,
+/// The active Study Session: a Pomodoro timer,
 /// live progress counters, and a single workspace the student switches
 /// between PDF/Notes/Flashcards/Active Recall inside — no navigating back
 /// out to Courses/Sidebar mid-session. Each tab reuses the exact same
-/// course-scoped list view every other part of the app uses (requirement 6:
-/// reuse existing repositories, no duplicated logic); this view only adds
+/// course-scoped list view every other part of the app uses; this view only adds
 /// the small optional callbacks those views already expose for tallying
 /// live progress.
 struct StudySessionWorkspaceView: View {
@@ -108,7 +107,7 @@ struct StudySessionWorkspaceView: View {
         .padding(.bottom, 8)
     }
 
-    // MARK: Pomodoro (requirement 3)
+    // MARK: Pomodoro
 
     /// A ring (Clock app's Timer tab) while you're still choosing a
     /// duration, before the session has started — once it's actually
@@ -304,7 +303,7 @@ struct StudySessionWorkspaceView: View {
         return false
     }
 
-    // MARK: Session Progress (requirement 4)
+    // MARK: Session Progress
 
     /// Deliberately small — this is a passive "what you've done so far"
     /// readout, not the point of the screen. The actual reading/notes/
@@ -350,7 +349,7 @@ struct StudySessionWorkspaceView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: Workspace (requirement 2)
+    // MARK: Workspace
 
     private var tabSwitcher: some View {
         Picker("Workspace", selection: $selectedTab) {

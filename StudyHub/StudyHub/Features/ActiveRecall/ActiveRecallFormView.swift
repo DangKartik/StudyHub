@@ -21,7 +21,7 @@ struct ActiveRecallFormView: View {
 
     /// True only when creating (not editing) from Course scope — Lecture
     /// scope has an implied, fixed Lecture and shows no picker at all.
-    /// Course scope shows an *optional* Lecture picker (DECISION-036):
+    /// Course scope shows an *optional* Lecture picker:
     /// "None" attaches the question directly to the Course, exactly like
     /// Flashcard's own optional Lecture picker.
     private var showsLecturePicker: Bool {
@@ -37,7 +37,7 @@ struct ActiveRecallFormView: View {
     /// being *edited*'s own direct Course or Lecture, a Lecture just picked
     /// when creating from Course scope, then the screen's own scope.
     /// Falling back only to `viewModel.resolvedCourse` was the exact bug
-    /// found in Flashcards' form (DECISION-034 follow-up): that's `nil`
+    /// found in Flashcards' form: that's `nil`
     /// whenever this form is opened from Global scope, which would show
     /// "Course: None" and hide the Note/Flashcard pickers even though the
     /// question itself has a real Course.

@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Simple front/back review screen (Phase 4.1) — tap to flip, then rate
+/// Simple front/back review screen — tap to flip, then rate
 /// Again/Hard/Good/Easy. Rating immediately computes the card's next
-/// review via SM-2 (Phase 4.4, DECISION-038).
+/// review via SM-2.
 struct FlashcardReviewView: View {
     @State private var viewModel: FlashcardReviewViewModel
     @State private var isFlipped = false

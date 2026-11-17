@@ -1,6 +1,6 @@
 import Foundation
 
-/// Preset focus-timer durations (Phase 4.3, requirement 3). `.custom` holds
+/// Preset focus-timer durations. `.custom` holds
 /// whatever the user picked in the Custom stepper.
 enum PomodoroDuration: Hashable, Identifiable {
     case twentyFive
@@ -43,7 +43,7 @@ enum PomodoroDuration: Hashable, Identifiable {
 }
 
 /// Plain countdown timer — Start/Pause/Resume/Finish, no notifications, no
-/// scheduling (requirement 3: "Timer only"). `completedPomodoros` is the
+/// scheduling. `completedPomodoros` is the
 /// only output `StudySessionViewModel` reads, stored into `StudySession`
 /// at Session Summary time.
 @MainActor

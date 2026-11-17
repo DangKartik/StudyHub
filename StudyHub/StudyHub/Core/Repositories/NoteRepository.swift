@@ -68,9 +68,9 @@ final class NoteRepository: NoteRepositoryProtocol {
     /// Aggregates notes attached directly to the Course with notes attached to any
     /// of its Lectures. All three ownership sets are structurally exclusive (a Note
     /// has exactly one of `note.course`, `note.lecture`, or `note.reading`, never
-    /// more than one — see `NotesViewModel.createNote` and DECISION-031), so this
+    /// more than one — see `NotesViewModel.createNote`), so this
     /// concatenation cannot duplicate a Note. Reading-owned notes deliberately never
-    /// appear here, even though a Reading belongs to a Course — DECISION-031 rules
+    /// appear here, even though a Reading belongs to a Course — the single-owner rule rules
     /// out surfacing Reading ownership as Course ownership. Walks the relationship
     /// graph directly rather than a `#Predicate` across `note.lecture?.course`,
     /// matching every other fetch method in this repository.

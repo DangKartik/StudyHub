@@ -13,17 +13,17 @@ final class StudySession {
 
     var semester: Semester?
 
-    /// Phase 4.3 (DECISION-037) — singular, optional, matching the actual
+    /// Singular, optional, matching the actual
     /// "pick one Course, optionally one Lecture" Study Mode flow. Replaces
     /// the original `courses: [Course]` many-to-many, which had zero
     /// consumers and didn't represent this shape at all.
     var course: Course?
     var lecture: Lecture?
 
-    /// Session-scoped tallies (Phase 4.3) — StudySession orchestrates and
+    /// Session-scoped tallies — StudySession orchestrates and
     /// counts, it doesn't own the reviewed content itself. Flashcard/
     /// ActiveRecallQuestion already track their own review history
-    /// (reviewCount/lastReviewed/difficulty, DECISION-034/035); these are
+    /// (reviewCount/lastReviewed/difficulty); these are
     /// just how many of those actions happened during *this* session.
     var flashcardsReviewedCount: Int = 0
     var questionsAnsweredCount: Int = 0

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ActiveRecallListView: View {
     let activeRecallRepository: any ActiveRecallRepositoryProtocol
-    /// Phase 4.3 (Study Mode) — invoked once per question rating, so an
+    /// Study Mode hook — invoked once per question rating, so an
     /// embedding Study Session can tally "Questions answered" live. `nil`
     /// everywhere else, zero effect on any existing call site.
     var onQuestionAnswered: (() -> Void)? = nil
@@ -46,7 +46,7 @@ struct ActiveRecallListView: View {
         ))
     }
 
-    /// Cross-course "All Questions" browsing (Phase 4.2), mirroring
+    /// Cross-course "All Questions" browsing, mirroring
     /// `FlashcardListView`'s global initializer.
     init(
         activeRecallRepository: any ActiveRecallRepositoryProtocol,
@@ -66,7 +66,7 @@ struct ActiveRecallListView: View {
         viewModel.displayedQuestions(searchText: searchText, tag: selectedTag, sortOrder: sortOrder)
     }
 
-    /// Phase 4.4 (requirement 3/6) — the subset of `displayedQuestions`
+    /// The subset of `displayedQuestions`
     /// actually due for review right now (due today or never reviewed).
     /// Drives the bulk "Review" button's default instead of reviewing
     /// every question; tapping an individual row still reviews that one
@@ -220,7 +220,7 @@ struct ActiveRecallListView: View {
                 .disabled(reviewButtonQuestions.isEmpty)
             }
 
-            // Review Queue (Phase 4.4): grouped by the shared SM-2 due-date
+            // Review Queue: grouped by the shared SM-2 due-date
             // schedule (Due Today/Due Soon/Future/Never Reviewed), same
             // grouping Flashcards uses.
             ForEach(viewModel.queueSections(from: displayedQuestions), id: \.section) { group in
@@ -281,8 +281,8 @@ private struct ActiveRecallRowView: View {
     let recallQuestion: ActiveRecallQuestion
 
     /// Course name, optionally with the linked Lecture's topic — a
-    /// question can now attach directly to a Course with no Lecture
-    /// (Phase 4.2, DECISION-036), same shape as Flashcard's row context.
+    /// question can now attach directly to a Course with no Lecture,
+    /// same shape as Flashcard's row context.
     private var contextText: String? {
         if let lecture = recallQuestion.lecture {
             if let course = lecture.course {

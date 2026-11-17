@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Phase 5 — gained an optional primary action so an empty screen can offer
+/// Has an optional primary action so an empty screen can offer
 /// a real path forward (e.g. "Add Course") instead of just icon/title/
 /// message with the only way out being a toolbar button the user has to
 /// notice on their own. `actionTitle`/`action` are both optional and

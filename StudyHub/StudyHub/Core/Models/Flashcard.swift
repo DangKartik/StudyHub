@@ -14,8 +14,7 @@ final class Flashcard {
     var reviewCount: Int = 0
     var easeFactor: Double = 2.5
     var interval: Double = 0
-    /// SM-2's consecutive-successful-repetition streak (Phase 4.4,
-    /// DECISION-038) — distinct from `reviewCount`, which is a lifetime
+    /// SM-2's consecutive-successful-repetition streak — distinct from `reviewCount`, which is a lifetime
     /// total that never resets. This resets to 0 on an "Again" rating,
     /// exactly as the SM-2 algorithm requires, and drives how the next
     /// interval is computed (1 day -> 6 days -> `interval * easeFactor`).
@@ -25,12 +24,11 @@ final class Flashcard {
 
     var course: Course?
     var lecture: Lecture?
-    /// Phase 4.1 (DECISION-034) — optional link to the Note this card was
+    /// Optional link to the Note this card was
     /// derived from, if any. Inverse: `Note.linkedFlashcards`, `.nullify`.
     var note: Note?
 
-    /// Active Recall questions derived from this Flashcard (Phase 4.2,
-    /// DECISION-035) — completes the Question -> Flashcard -> Note -> Course
+    /// Active Recall questions derived from this Flashcard — completes the Question -> Flashcard -> Note -> Course
     /// chain without Flashcard needing to know about ActiveRecallQuestion
     /// directly (the relationship is declared, with its `.nullify` delete
     /// rule, on `ActiveRecallQuestion.flashcard`'s inverse).

@@ -17,7 +17,7 @@ final class Reading {
     var attachments: [Attachment] = []
 
     /// .nullify, not .cascade — deleting a Reading must not destroy notes the
-    /// user wrote about it. See DECISION-032.
+    /// user wrote about it.
     @Relationship(deleteRule: .nullify, inverse: \Note.reading)
     var noteEntries: [Note] = []
 

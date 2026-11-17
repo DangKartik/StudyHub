@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shown once a Study Session ends (Phase 4.3, requirement 5). Purely a
+/// Shown once a Study Session ends. Purely a
 /// display of what's already been stored onto `session` by
 /// `StudySessionViewModel.endSession(completedPomodoros:)` — this view owns
 /// nothing itself.

@@ -2,7 +2,7 @@ import PencilKit
 import SwiftUI
 
 /// Drawing tools available in the custom markup toolbar. Deliberately
-/// excludes "Brush" — see the Phase 3N.6.1A report for the reasoning.
+/// excludes "Brush".
 enum PencilToolKind: CaseIterable {
     case pen
     case pencil
@@ -145,11 +145,11 @@ enum ToolbarCollapseSide {
     case right
 }
 
-/// Custom Apple Notes–style markup toolbar. Not built on `PKToolPicker` — see
-/// the Phase 3N.6.1 audit for why the exact single-row, inline-color layout
-/// isn't achievable through the system tool picker. Purely presentational:
+/// Custom Apple Notes–style markup toolbar. Not built on `PKToolPicker`, because the
+/// exact single-row, inline-color layout isn't achievable through the system
+/// tool picker. Purely presentational:
 /// tool selection, per-tool appearance, and undo/redo all live in
-/// `PencilToolManager` (Phase 3N.6.3) — this view only reads/writes through
+/// `PencilToolManager` — this view only reads/writes through
 /// it and owns UI-only state (collapse, settings-panel visibility, color-
 /// picker visibility) itself.
 struct PencilToolbar: View {
@@ -303,8 +303,8 @@ struct PencilToolbar: View {
 
     /// Single tap: tapping the tool that's already selected toggles its
     /// settings panel open/closed; tapping a different tool switches to it
-    /// and closes any open settings panel. Replaces Phase 3N.6.1B's
-    /// double-tap gesture per this phase's explicit requirement.
+    /// and closes any open settings panel. Replaces an earlier
+    /// double-tap gesture.
     private func handleToolTap(_ tool: PencilToolKind) {
         isShowingColorPicker = false
         if toolManager.selectedTool == tool {
@@ -339,8 +339,7 @@ struct PencilToolbar: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    /// Anchors `colorPickerPopover` directly below this icon (Phase
-    /// 3N.6.1C requirement) by publishing this button's own frame, in the
+    /// Anchors `colorPickerPopover` directly below this icon by publishing this button's own frame, in the
     /// toolbar's coordinate space, via `SwatchAnchorKey`.
     private var customColorSwatchButton: some View {
         MulticolorSwatchIcon(isSelected: isCustomColorSelected)

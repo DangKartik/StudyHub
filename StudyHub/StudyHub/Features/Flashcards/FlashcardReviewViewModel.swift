@@ -1,15 +1,14 @@
 import Foundation
 
-/// Drives a single review pass over a fixed set of cards (Phase 4.1).
+/// Drives a single review pass over a fixed set of cards.
 /// Rating a card records the rating — `difficulty`/`lastReviewed`/
-/// `reviewCount` per DECISION-034 — and immediately computes its next
-/// review via the shared `SpacedRepetitionScheduler` (Phase 4.4,
-/// DECISION-038), then advances to the next card.
+/// `reviewCount` — and immediately computes its next
+/// review via the shared `SpacedRepetitionScheduler`, then advances to the next card.
 @MainActor
 @Observable
 final class FlashcardReviewViewModel {
     private let flashcardRepository: any FlashcardRepositoryProtocol
-    /// Phase 4.3 (Study Mode) — invoked once per successful rating, so an
+    /// Study Mode hook — invoked once per successful rating, so an
     /// embedding Study Session can tally "Flashcards reviewed" live.
     private let onRate: (() -> Void)?
 

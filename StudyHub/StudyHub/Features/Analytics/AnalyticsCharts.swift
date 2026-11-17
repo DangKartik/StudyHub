@@ -1,8 +1,7 @@
 import SwiftUI
 import Charts
 
-/// Every chart in this phase uses Swift Charts only — no third-party chart
-/// library, per Phase 4.5's explicit requirement.
+/// Every chart uses Swift Charts only — no third-party chart library.
 
 struct DailyStudyTimeChart: View {
     let data: [DailyDataPoint]

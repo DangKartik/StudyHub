@@ -381,7 +381,7 @@ struct HomeView: View {
         }
     }
 
-    /// Study Overview — surfaces Spaced Repetition (Phase 4.4) on Home:
+    /// Study Overview — surfaces Spaced Repetition on Home:
     /// due Flashcards/Active Recall counts (global, so a due card shows up
     /// regardless of which course/semester it belongs to) and today's total
     /// study time. Deliberately lives only here, not on Study Mode's own

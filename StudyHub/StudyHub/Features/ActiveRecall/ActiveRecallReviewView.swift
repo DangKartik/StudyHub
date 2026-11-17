@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Question -> think -> reveal answer -> self-grade (Phase 4.2). Only the
+/// Question -> think -> reveal answer -> self-grade. Only the
 /// rating is saved; no scheduling is implemented. Mirrors
 /// `FlashcardReviewView`, with a 4-level rating (Again/Hard/Good/Easy)
 /// instead of 3.

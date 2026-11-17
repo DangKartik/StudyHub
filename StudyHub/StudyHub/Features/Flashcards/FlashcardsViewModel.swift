@@ -1,12 +1,12 @@
 import Foundation
 
-/// A card's last self-rated recall (Phase 4.1) — stored directly in
-/// `Flashcard.difficulty` (see DECISION-034), 0 meaning unrated.
-/// `.again` was added in Phase 4.4 (DECISION-038) to support real SM-2
+/// A card's last self-rated recall — stored directly in
+/// `Flashcard.difficulty`, 0 meaning unrated.
+/// `.again` exists to support real SM-2
 /// scheduling, which needs a fourth "didn't recall it at all" level
 /// distinct from "recalled it, but with difficulty" (`.hard`). Given
 /// rawValue 4 (not inserted before `.hard`) so every already-stored
-/// `difficulty` value from before this phase keeps its exact old meaning —
+/// `difficulty` value stored before `.again` existed keeps its exact old meaning —
 /// no migration needed.
 enum FlashcardRating: Int, CaseIterable, Identifiable {
     case hard = 1
@@ -26,7 +26,7 @@ enum FlashcardRating: Int, CaseIterable, Identifiable {
     }
 
     /// Converts to the feature-agnostic grade `SpacedRepetitionScheduler`
-    /// actually schedules from (Phase 4.4).
+    /// actually schedules from.
     var reviewGrade: ReviewGrade {
         switch self {
         case .again: return .again
@@ -94,8 +94,8 @@ final class FlashcardsViewModel {
     enum Scope {
         case course(Course)
         case lecture(Lecture)
-        /// Cross-course "All Flashcards" browsing (Phase 4.1), mirroring
-        /// `NotesViewModel.Scope.global` (DECISION-031). Read-only browse +
+        /// Cross-course "All Flashcards" browsing, mirroring
+        /// `NotesViewModel.Scope.global`. Read-only browse +
         /// review: a flashcard has no unambiguous owner to assign from this
         /// scope, so creation is disabled here — same restriction Notes
         /// already has, for the same reason.
@@ -211,7 +211,7 @@ final class FlashcardsViewModel {
     }
 
     /// Groups an already-filtered/sorted list into the shared
-    /// `DueQueueSection` buckets (Phase 4.4, DECISION-038), keyed on the
+    /// `DueQueueSection` buckets, keyed on the
     /// real SM-2 schedule instead of the old placeholder "last rating"
     /// grouping. Empty sections are omitted. Mirrors
     /// `ActiveRecallViewModel.queueSections(from:)`.
@@ -223,7 +223,7 @@ final class FlashcardsViewModel {
     }
 
     /// The subset of `flashcards` that belong in a "due now" review session
-    /// (Phase 4.4, requirement 3/6) — due today or never reviewed. Drives
+    /// — due today or never reviewed. Drives
     /// the list's "Review" button default instead of reviewing every card.
     func dueFlashcards(from flashcards: [Flashcard]) -> [Flashcard] {
         flashcards.filter { DueQueueSection.classify(nextReviewDate: $0.nextReviewDate).isDueNow }

@@ -201,7 +201,7 @@ struct ResourceFormView: View {
     /// A newly-imported file (`stagedTemporaryPath`) lives in temporary
     /// storage until Save is actually pressed — only then is it finalized
     /// into permanent attachment storage, matching the Notes staging
-    /// pattern (see Phase 3N.4 Part 3). If no new file was imported this
+    /// pattern. If no new file was imported this
     /// session (editing an existing file-based resource without replacing
     /// it, or a Link type), `url` already holds the correct, unchanged
     /// reference.

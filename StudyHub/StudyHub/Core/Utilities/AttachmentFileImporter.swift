@@ -3,12 +3,12 @@ import Foundation
 /// Smallest-possible helper for copying a user-picked file (from `.fileImporter`)
 /// into app-owned storage. Intentionally not a protocol-based, injected Service —
 /// just a plain namespace called directly, the same way `Color.courseColor(from:)`
-/// or `URL.mailto(_:)` are. See DECISION-029: a dedicated FileService is deferred
+/// or `URL.mailto(_:)` are. A dedicated FileService is deferred
 /// until multiple features actually need shared file-management logic.
 enum AttachmentFileImporter {
     /// Copies a picked file into temporary staging rather than permanent
     /// storage — used while composing a new Note or Resource, before the user
-    /// has committed to saving it (see Phase 3N.4 Part 3, Phase 3N.5.1). Call
+    /// has committed to saving it. Call
     /// `finalize` when the owning object is actually saved, or
     /// `deleteTemporaryFile` if it's discarded.
     static func importToTemporaryStorage(from sourceURL: URL) throws -> (path: String, filename: String) {

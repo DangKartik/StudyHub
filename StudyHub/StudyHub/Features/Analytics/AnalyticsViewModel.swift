@@ -87,8 +87,8 @@ struct ReadingAnalytics {
 }
 
 /// Flashcard stats are deliberately snapshot-based, not a true longitudinal
-/// history — the schema only stores each card's *current* rating/schedule
-/// (Phase 4.4), not a log of every past review. See
+/// history — the schema only stores each card's *current* rating/schedule,
+/// not a log of every past review. See
 /// `AnalyticsViewModel.computeFlashcardAnalytics` for why "retention
 /// estimate" is computed this way rather than adding a review-log model.
 struct FlashcardAnalytics {
@@ -174,7 +174,7 @@ struct SemesterGPARow: Identifiable {
 }
 
 /// One cell in the real calendar-month grid (Study Session Analytics'
-/// "daily study heatmap", requirement 5) — `date`/`dayNumber` are `nil` for
+/// "daily study heatmap") — `date`/`dayNumber` are `nil` for
 /// the leading/trailing filler cells that pad the grid out to full weeks
 /// before day 1 and after the month's last day.
 struct CalendarDayCell: Identifiable {
@@ -194,12 +194,12 @@ struct CalendarDayCell: Identifiable {
     }
 }
 
-/// Read-only analytics (Phase 4.5) — every number here is computed fresh
+/// Read-only analytics — every number here is computed fresh
 /// from existing repositories each time `loadAnalytics()` runs; nothing is
 /// persisted or duplicated. `StatisticsSnapshot`/`StatisticsRepository`
-/// (dormant scaffolding since Phase 2, confirmed unused by any writer) is
-/// deliberately NOT used, for the same reason DECISION-037 ignored
-/// `StudySession`'s own dormant fields before reshaping it: dormant,
+/// (dormant scaffolding, confirmed unused by any writer) is
+/// deliberately NOT used, for the same reason `StudySession`'s own
+/// dormant fields were ignored before reshaping it: dormant,
 /// never-populated fields aren't a data source, they're just unused schema.
 @MainActor
 @Observable
@@ -244,7 +244,7 @@ final class AnalyticsViewModel {
     private var allSessions: [StudySession] = []
 
     /// How far back the daily/weekly charts look — a fixed window, not a
-    /// user-adjustable range, to keep this phase's scope additive.
+    /// user-adjustable range, to keep the dashboard simple.
     private static let dailyChartDays = 30
     private static let weeklyTrendWeeks = 12
 
@@ -589,7 +589,7 @@ final class AnalyticsViewModel {
         return GPACalculator.gpa(for: courses)
     }
 
-    // MARK: - Calendar month (Study Session heatmap, requirement 5)
+    // MARK: - Calendar month (Study Session heatmap)
 
     /// Rebuilds `calendarDays` for `displayedMonth` from the already-fetched
     /// `allSessions` — cheap, in-memory, so month navigation doesn't need a

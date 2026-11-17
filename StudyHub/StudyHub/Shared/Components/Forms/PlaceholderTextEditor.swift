@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Phase 5 — `TextEditor` has no built-in placeholder support (unlike
+/// `TextEditor` has no built-in placeholder support (unlike
 /// `TextField`), so a fresh multi-line field renders as a blank box with no
 /// hint at all. This overlays faint placeholder text that disappears the
 /// moment typing starts, matching how every `TextField` in these same forms

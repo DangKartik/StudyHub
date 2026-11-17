@@ -20,7 +20,7 @@ struct GlobalSearchResult: Identifiable {
     let sectionTitle: String
 }
 
-/// Search across every content type StudyHub has (Phase 4.5 follow-up) —
+/// Search across every content type StudyHub has —
 /// client-side substring matching over already-fetched data, the same
 /// pattern `NotesViewModel.displayedNotes`/`FlashcardsViewModel
 /// .displayedFlashcards` already use, since none of these repositories

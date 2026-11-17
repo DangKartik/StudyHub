@@ -7,8 +7,8 @@ import SwiftUI
 /// scrolling, pinch-to-zoom, text selection, copy, and page rendering are all
 /// inherited from `PDFView` for free.
 ///
-/// Also hosts the Markup mode toolbar (Phase 3N.6.1A) and persisted PencilKit
-/// markup (Phase 3N.6.4): a Summary button (shown only when the caller passes
+/// Also hosts the Markup mode toolbar and persisted PencilKit
+/// markup: a Summary button (shown only when the caller passes
 /// non-nil `summary` text) and a Markup toggle that overlays per-page
 /// `PKCanvasView`s (via `PDFMarkupCoordinator`) on top of the PDF. Existing
 /// markup is restored automatically when the PDF loads; new/changed markup is
@@ -535,7 +535,7 @@ private struct PDFOutlineListView: View {
 /// selection, copy, native search via `PDFDocument.findString`, page rendering)
 /// is `PDFView`'s own default behavior and is left untouched. Also wires in
 /// `PDFMarkupCoordinator` as the page overlay provider and toggles
-/// `isInMarkupMode` (Phase 3N.6.4) — while Markup is active, gestures route
+/// `isInMarkupMode` — while Markup is active, gestures route
 /// to the per-page canvases instead of PDFView's own scroll/zoom/select.
 private struct PDFKitRepresentedView: UIViewRepresentable {
     let document: PDFDocument

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Wired to the sidebar's existing `.settings` destination, which (like
-/// `.statistics` before Phase 4.5 and `.resources` before it was removed)
+/// `.statistics` and `.resources` once did)
 /// had no real screen behind it. Starts minimal — the one setting that
 /// actually exists right now is the week-start preference (requested
 /// alongside the Analytics heatmap); more can be added here as they come up.

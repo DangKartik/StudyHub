@@ -1,7 +1,7 @@
 import Foundation
 
 /// The four-button rating both Flashcard review and Active Recall review
-/// collect (Phase 4.4) — a single, feature-agnostic type so
+/// collect — a single, feature-agnostic type so
 /// `SpacedRepetitionScheduler` doesn't need to know about either
 /// `FlashcardRating` or `RecallRating`. Each feature's own rating enum
 /// converts to this one at the point of grading (see `FlashcardRating
@@ -29,7 +29,7 @@ enum ReviewGrade: CaseIterable {
     }
 }
 
-/// SM-2 spaced-repetition scheduling (Phase 4.4, DECISION-038) — the single
+/// SM-2 spaced-repetition scheduling — the single
 /// engine both Flashcards and Active Recall Questions use to turn a rating
 /// into updated scheduling state. Pure function: no persistence, no model
 /// knowledge — callers (`FlashcardReviewViewModel`/
@@ -87,7 +87,7 @@ enum SpacedRepetitionScheduler {
 }
 
 /// Which due-queue bucket an item (Flashcard/ActiveRecallQuestion) falls
-/// into, purely from its `nextReviewDate` (Phase 4.4, DECISION-038) — the
+/// into, purely from its `nextReviewDate` — the
 /// shared grouping both features' list views use, replacing the earlier
 /// rating-based "Review Again/Never Reviewed/Recently Reviewed" placeholder
 /// groupings (which existed only because no real scheduling existed yet).

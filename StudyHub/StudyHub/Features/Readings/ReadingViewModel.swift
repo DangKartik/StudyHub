@@ -175,7 +175,7 @@ final class ReadingViewModel {
         }
     }
 
-    /// Persists a PDF's PencilKit markup (Phase 3N.6.4) — no list reload
+    /// Persists a PDF's PencilKit markup — no list reload
     /// needed, since markup data isn't shown in any Reading row.
     func saveMarkup(_ data: Data, for attachment: Attachment) {
         attachment.markupData = data

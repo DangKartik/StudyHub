@@ -4,7 +4,7 @@ struct NotesListView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
-    /// Phase 4.3 (Study Mode) — invoked once per note opened (any of PDF /
+    /// Study Mode hook — invoked once per note opened (any of PDF /
     /// URL / edit sheet), so an embedding Study Session can tally "Notes
     /// opened" live without this view needing to know Study Mode exists.
     /// `nil` everywhere else, so every existing call site is unaffected.
@@ -52,8 +52,8 @@ struct NotesListView: View {
         ))
     }
 
-    /// Cross-course "All Notes" browsing (Phase 3.1) — no Course/Lecture
-    /// scope, backed by `NotesViewModel.Scope.global`. See DECISION-031.
+    /// Cross-course "All Notes" browsing — no Course/Lecture
+    /// scope, backed by `NotesViewModel.Scope.global`.
     init(
         noteRepository: any NoteRepositoryProtocol,
         bookmarkRepository: any BookmarkRepositoryProtocol,

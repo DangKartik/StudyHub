@@ -7,7 +7,7 @@ struct FlashcardListView: View {
     let bookmarkRepository: any BookmarkRepositoryProtocol
     let pdfProgressRepository: any PDFProgressRepositoryProtocol
     let pdfService: any PDFServiceProtocol
-    /// Phase 4.3 (Study Mode) — invoked once per card rating, so an
+    /// Study Mode hook — invoked once per card rating, so an
     /// embedding Study Session can tally "Flashcards reviewed" live. `nil`
     /// everywhere else, zero effect on any existing call site.
     var onCardReviewed: (() -> Void)? = nil
@@ -73,9 +73,9 @@ struct FlashcardListView: View {
         ))
     }
 
-    /// Cross-course "All Flashcards" browsing (Phase 4.1) — no Course/Lecture
+    /// Cross-course "All Flashcards" browsing — no Course/Lecture
     /// scope, backed by `FlashcardsViewModel.Scope.global`. Mirrors
-    /// `NotesListView`'s equivalent global initializer (DECISION-031).
+    /// `NotesListView`'s equivalent global initializer.
     init(
         noteRepository: any NoteRepositoryProtocol,
         lectureRepository: any LectureRepositoryProtocol,
@@ -108,7 +108,7 @@ struct FlashcardListView: View {
         )
     }
 
-    /// Phase 4.4 (requirement 3/6) — the subset of `displayedFlashcards`
+    /// The subset of `displayedFlashcards`
     /// actually due for review right now (due today or never reviewed).
     /// Drives the bulk "Review" button's default instead of reviewing
     /// every card; tapping an individual row still reviews that one card
@@ -300,7 +300,7 @@ struct FlashcardListView: View {
                 .disabled(reviewButtonCards.isEmpty)
             }
 
-            // Review Queue (Phase 4.4): grouped by the shared SM-2 due-date
+            // Review Queue: grouped by the shared SM-2 due-date
             // schedule (Due Today/Due Soon/Future/Never Reviewed), same
             // grouping Active Recall uses.
             ForEach(viewModel.queueSections(from: displayedFlashcards), id: \.section) { group in

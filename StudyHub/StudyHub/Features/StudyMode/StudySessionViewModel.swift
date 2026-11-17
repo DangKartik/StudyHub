@@ -1,7 +1,6 @@
 import Foundation
 
-/// Orchestrates one Study Session (Phase 4.3, requirement 6: "StudySession
-/// should orchestrate, not own") — creates and ends the `StudySession`
+/// Orchestrates one Study Session — creates and ends the `StudySession`
 /// record via `StudySessionRepository`, and tracks the four live session
 /// counters. It never duplicates ownership of the reviewed content itself:
 /// Flashcards/Active Recall questions/Notes keep their own existing
@@ -35,7 +34,7 @@ final class StudySessionViewModel: Identifiable {
     /// Sum of `PDFProgress.highestPageIndex` across the Course's Readings,
     /// captured when the session starts — "pages read" is the difference
     /// between that and the current sum, computed without touching
-    /// PDFViewerView/PDFViewerViewModel at all (see DECISION-037).
+    /// PDFViewerView/PDFViewerViewModel at all.
     private var pagesBaseline = 0
 
     init(

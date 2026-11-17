@@ -43,7 +43,7 @@ final class HomeViewModel {
     /// actually populates them.
     private(set) var isLoading = true
 
-    /// Study Overview card (added when Spaced Repetition — Phase 4.4 — was
+    /// Study Overview card (added when Spaced Repetition was
     /// surfaced on Home): due counts across every course, not scoped to the
     /// active semester, since a due card doesn't stop being due just
     /// because its course belongs to a different semester.

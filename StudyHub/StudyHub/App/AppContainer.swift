@@ -168,10 +168,10 @@ final class AppContainer {
         }
     }
 
-    /// `Quote`/`QuoteRepository` have existed since Phase 2 with no writer
+    /// `Quote`/`QuoteRepository` have existed from the start with no writer
     /// anywhere (confirmed by a full-project search) — dormant scaffolding,
-    /// same shape as `StudySession` before Phase 4.3 and `ActiveRecallQuestion`'s
-    /// SM-2 fields before Phase 4.4. Home's Study Overview card (which
+    /// same shape as `StudySession` and `ActiveRecallQuestion`'s SM-2 fields
+    /// before they were wired up. Home's Study Overview card (which
     /// originally shipped with its own hardcoded quote list before this
     /// fix) is the first real consumer.
     ///

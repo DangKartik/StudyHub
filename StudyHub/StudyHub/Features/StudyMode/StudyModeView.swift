@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Study Mode entry point (Phase 4.3, requirement 1) — pick a Course,
+/// Study Mode entry point — pick a Course,
 /// optionally a Lecture, then start a session. The actual session lives in
 /// `StudySessionWorkspaceView`, presented full-screen so there's no
-/// navigating back and forth once a session begins (requirement 2).
+/// navigating back and forth once a session begins.
 struct StudyModeView: View {
     let navigationRouter: NavigationRouter
     let courseRepository: any CourseRepositoryProtocol

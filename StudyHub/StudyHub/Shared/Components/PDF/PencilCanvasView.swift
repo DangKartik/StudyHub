@@ -6,7 +6,7 @@ import SwiftUI
 /// matching `PDFDocument.index(for:)`. `drawingData` is a raw
 /// `PKDrawing.dataRepresentation()` blob in that page's own native point
 /// space. An array of these, JSON-encoded, is what's stored in
-/// `Attachment.markupData` / `Resource.markupData` (Phase 3N.6.4) — no
+/// `Attachment.markupData` / `Resource.markupData` — no
 /// separate model/table needed for per-page storage.
 private struct PDFPageMarkup: Codable {
     let pageIndex: Int

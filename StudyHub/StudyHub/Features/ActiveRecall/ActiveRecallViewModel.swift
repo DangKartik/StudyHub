@@ -1,7 +1,7 @@
 import Foundation
 
-/// A question's last self-rated recall (Phase 4.2) — stored in
-/// `ActiveRecallQuestion.difficulty` (see DECISION-035), 0 meaning unrated.
+/// A question's last self-rated recall — stored in
+/// `ActiveRecallQuestion.difficulty`, 0 meaning unrated.
 /// Unlike Flashcard's original 3-level rating, Active Recall already had an
 /// explicit "Again" level (got it wrong / need to see it soon) distinct
 /// from having never been reviewed at all.
@@ -23,7 +23,7 @@ enum RecallRating: Int, CaseIterable, Identifiable {
     }
 
     /// Converts to the feature-agnostic grade `SpacedRepetitionScheduler`
-    /// actually schedules from (Phase 4.4, DECISION-038).
+    /// actually schedules from.
     var reviewGrade: ReviewGrade {
         switch self {
         case .again: return .again
@@ -58,7 +58,7 @@ final class ActiveRecallViewModel {
     enum Scope {
         case lecture(Lecture)
         /// Read-only aggregation across the Course's Lectures — no direct
-        /// ownership to assign a new question to (DECISION-027/035), so
+        /// ownership to assign a new question to, so
         /// creation is not offered from this scope.
         case course(Course)
         /// Cross-course "All Questions" browsing, mirroring
@@ -95,8 +95,7 @@ final class ActiveRecallViewModel {
     }
 
     /// Both Lecture and Course scope have an unambiguous owner to assign a
-    /// new question to (Phase 4.2, DECISION-036 — ActiveRecallQuestion now
-    /// has a direct `course` field, mirroring Flashcard). Only Global has
+    /// new question to. Only Global has
     /// none.
     var supportsCreation: Bool {
         switch scope {
@@ -126,7 +125,7 @@ final class ActiveRecallViewModel {
 
     /// The question's Course — resolved via `scope` directly for Course
     /// scope, else via the (Lecture scope's) Lecture. Shown read-only in
-    /// the form, mirroring how DECISION-034's Flashcard form handles Course.
+    /// the form, mirroring how the Flashcard form handles Course.
     var resolvedCourse: Course? {
         scope.course
     }
@@ -145,7 +144,7 @@ final class ActiveRecallViewModel {
 
     /// Flashcards a question can optionally link to, scoped to `course` —
     /// completes the Question -> Flashcard -> Note -> Course chain
-    /// (requirement 6) without a duplicate Course field on the question.
+    /// without a duplicate Course field on the question.
     func availableFlashcards(for course: Course?) -> [Flashcard] {
         guard let course else { return [] }
         return ((try? flashcardRepository.fetch(forCourse: course)) ?? [])
@@ -185,7 +184,7 @@ final class ActiveRecallViewModel {
     }
 
     /// Groups an already-filtered/sorted list into the shared
-    /// `DueQueueSection` buckets (Phase 4.4, DECISION-038), keyed on the
+    /// `DueQueueSection` buckets, keyed on the
     /// real SM-2 schedule instead of the old placeholder "last rating"
     /// grouping. Empty sections are omitted.
     func queueSections(from questions: [ActiveRecallQuestion]) -> [(section: DueQueueSection, questions: [ActiveRecallQuestion])] {
@@ -196,7 +195,7 @@ final class ActiveRecallViewModel {
     }
 
     /// The subset of `questions` that belong in a "due now" review session
-    /// (Phase 4.4, requirement 3/6) — due today or never reviewed. Drives
+    /// — due today or never reviewed. Drives
     /// the list's "Review" button default instead of reviewing every
     /// question.
     func dueQuestions(from questions: [ActiveRecallQuestion]) -> [ActiveRecallQuestion] {
@@ -226,7 +225,7 @@ final class ActiveRecallViewModel {
     /// ignored when creating from Lecture scope, where the lecture is
     /// already implied by `scope` itself.
     /// `lecture` is optional and only meaningful for Course scope — "None"
-    /// attaches the question directly to the Course (DECISION-036), a
+    /// attaches the question directly to the Course, a
     /// picked Lecture attaches to that instead. Lecture scope ignores this
     /// param entirely, since the Lecture is already implied by `scope`.
     /// Mirrors `FlashcardsViewModel.createFlashcard` exactly.

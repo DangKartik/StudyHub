@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Phase 5 (Polish & UX) — shared visual constants so every "card" surface,
+/// Shared visual constants so every "card" surface,
 /// badge/pill, and section in the app draws from the same design language
 /// instead of each screen picking its own corner radius/padding/shadow.
 /// Additive only: existing screens are updated to reference these instead

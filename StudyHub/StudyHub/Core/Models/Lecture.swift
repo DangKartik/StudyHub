@@ -32,7 +32,7 @@ final class Lecture {
     @Relationship(deleteRule: .cascade)
     var calendarEventReference: CalendarEventReference?
 
-    /// Phase 4.3 (DECISION-037) — `.nullify`, matching `Course.studySessions`.
+    /// `.nullify`, matching `Course.studySessions`.
     @Relationship(deleteRule: .nullify, inverse: \StudySession.lecture)
     var studySessions: [StudySession] = []
 
