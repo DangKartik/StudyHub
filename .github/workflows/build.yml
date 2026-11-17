@@ -1,0 +1,23 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode version
+        run: xcodebuild -version
+      - name: Build for the iPad simulator
+        run: |
+          xcodebuild build \
+            -project StudyHub/StudyHub.xcodeproj \
+            -target StudyHub \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -40
+          test "${PIPESTATUS[0]}" -eq 0
